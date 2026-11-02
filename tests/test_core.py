@@ -114,8 +114,8 @@ class _FakeClient:
         from types import SimpleNamespace as NS
         self.calls.append(kw)
         post = self.replies.pop(0)
-        return NS(content=[NS(type="tool_use", id=f"t{len(self.calls)}", input=post)],
-                  usage=NS(input_tokens=1, output_tokens=1), stop_reason="tool_use")
+        return NS(content=[NS(type="text", text=json.dumps(post))],
+                  usage=NS(input_tokens=1, output_tokens=1), stop_reason="end_turn")
 
 
 def test_writer_retries_with_validator_feedback():
@@ -125,6 +125,7 @@ def test_writer_retries_with_validator_feedback():
     client = _FakeClient([good_post(hook="Amazon soars 42%"), good_post()])
     post, attempts = writer.write(f, client=client)
     assert post["hook"] == good_post()["hook"] and len(attempts) == 2
-    feedback = client.calls[1]["messages"][-1]["content"][0]
-    assert feedback["type"] == "tool_result" and "42%" in feedback["content"]
-    assert client.calls[0]["tool_choice"]["name"] == "submit_post"
+    feedback = client.calls[1]["messages"][-1]
+    assert feedback["role"] == "user" and "42%" in feedback["content"]
+    fmt = client.calls[0]["extra_body"]["output_config"]["format"]
+    assert fmt["type"] == "json_schema" and fmt["schema"]["additionalProperties"] is False

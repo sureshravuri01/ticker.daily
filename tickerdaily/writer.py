@@ -17,7 +17,7 @@ Hard rules:
 4. Do not copy headline wording; summarize in your own words.
 5. The caption must end with a line containing exactly: Not financial advice.
 
-Submit the post with the submit_post tool."""
+Reply with the post as JSON matching the schema."""
 
 
 
@@ -28,25 +28,22 @@ class DraftRejected(RuntimeError):
 
 
 _STR = {"type": "string"}
-TOOL = {
-    "name": "submit_post",
-    "description": "Submit the finished carousel copy.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "hook": {**_STR, "description": "cover headline, max 55 characters, makes people swipe"},
-            "cover_sub": {**_STR, "description": "one line under the hook, max 70 characters"},
-            "wrap_line": {**_STR, "description": "one sentence on how the overall market did today"},
-            "spotlight_title": {**_STR, "description": "max 40 characters, about the spotlight stock"},
-            "spotlight_why": {**_STR, "description": "2-3 short sentences on why the spotlight stock moved"},
-            "movers_line": {**_STR, "description": "one sentence tying today's biggest gainers and losers together"},
-            "next_line": {**_STR, "description": "one sentence on what to watch next trading day"},
-            "caption": {**_STR, "description": "Instagram caption, 3-6 short lines, ending with: Not financial advice."},
-            "hashtags": {"type": "array", "items": _STR, "description": "5 to 8 hashtags without the # sign"},
-        },
-        "required": ["hook", "cover_sub", "wrap_line", "spotlight_title", "spotlight_why",
-                     "movers_line", "next_line", "caption", "hashtags"],
+SCHEMA = {
+    "type": "object",
+    "properties": {
+        "hook": {**_STR, "description": "cover headline, max 55 characters, makes people swipe"},
+        "cover_sub": {**_STR, "description": "one line under the hook, max 70 characters"},
+        "wrap_line": {**_STR, "description": "one sentence on how the overall market did today"},
+        "spotlight_title": {**_STR, "description": "max 40 characters, about the spotlight stock"},
+        "spotlight_why": {**_STR, "description": "2-3 short sentences on why the spotlight stock moved"},
+        "movers_line": {**_STR, "description": "one sentence tying today's biggest gainers and losers together"},
+        "next_line": {**_STR, "description": "one sentence on what to watch next trading day"},
+        "caption": {**_STR, "description": "Instagram caption, 3-6 short lines, ending with: Not financial advice."},
+        "hashtags": {"type": "array", "items": _STR, "description": "5 to 8 hashtags without the # sign"},
     },
+    "required": ["hook", "cover_sub", "wrap_line", "spotlight_title", "spotlight_why",
+                 "movers_line", "next_line", "caption", "hashtags"],
+    "additionalProperties": False,
 }
 
 
@@ -60,16 +57,18 @@ def write(facts: dict, max_attempts: int = 3, client=None) -> tuple[dict, list[d
     for _ in range(max_attempts):
         resp = client.messages.create(
             model=config.MODEL, max_tokens=3000, system=SYSTEM, messages=messages,
-            tools=[TOOL], tool_choice={"type": "tool", "name": TOOL["name"]},
+            # Structured outputs: the reply is guaranteed to be JSON matching SCHEMA.
+            extra_body={"output_config": {"format": {"type": "json_schema", "schema": SCHEMA}}},
         )
-        call = next((b for b in resp.content if b.type == "tool_use"), None)
+        text = "".join(b.text for b in resp.content if b.type == "text")
         usage = {"in": resp.usage.input_tokens, "out": resp.usage.output_tokens}
-        if call is None:  # shouldn't happen with a forced tool, but never crash on it
-            attempts.append({"raw": None, "stop_reason": resp.stop_reason, "usage": usage,
-                             "errors": [f"no tool call (stop_reason={resp.stop_reason})"]})
-            print(f"[writer] no tool call, stop_reason={resp.stop_reason}", flush=True)
+        try:
+            post = json.loads(text)
+        except ValueError:
+            attempts.append({"raw": text[:2000], "stop_reason": resp.stop_reason, "usage": usage,
+                             "errors": [f"unparseable reply (stop_reason={resp.stop_reason})"]})
+            print(f"[writer] unparseable reply, stop_reason={resp.stop_reason}: {text[:200]!r}", flush=True)
             continue
-        post = dict(call.input)
         post["hashtags"] = [h.lstrip("#").replace(" ", "") for h in post.get("hashtags", [])][:8]
         result = validator.validate(post, facts)
         attempts.append({"raw": post, "errors": result.errors, "usage": usage})
@@ -79,10 +78,8 @@ def write(facts: dict, max_attempts: int = 3, client=None) -> tuple[dict, list[d
         if result.ok:
             return post, attempts
         messages += [
-            {"role": "assistant", "content": resp.content},
-            {"role": "user", "content": [{
-                "type": "tool_result", "tool_use_id": call.id, "is_error": True,
-                "content": "Fix these problems and submit again:\n- " + "\n- ".join(result.errors),
-            }]},
+            {"role": "assistant", "content": text},
+            {"role": "user", "content": "Fix these problems and reply with the full JSON again:\n- "
+             + "\n- ".join(result.errors)},
         ]
     raise DraftRejected(attempts)
