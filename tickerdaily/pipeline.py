@@ -2,17 +2,19 @@
 
     python -m tickerdaily ingest            snapshot everything into the data lake
     python -m tickerdaily draft             ingest + build facts + write + validate + render
+    python -m tickerdaily decide --post-id ID --action approve|reject|regen
     python -m tickerdaily draft --fixture tests/fixtures/sample_day.json --no-llm   offline test
 """
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from . import config, facts as factsmod, storage
+from . import config, facts as factsmod, storage, telegram
 
 
 def ingest(day: str, rid: str) -> dict:
@@ -97,6 +99,9 @@ def draft(fixture: str | None, use_llm: bool) -> Path:
                 "run_id": rid, "status": "rejected", "model": config.MODEL,
                 "schema_version": config.SCHEMA_VERSION, "facts": f, "attempts": e.attempts,
             }, day)
+            telegram.notify("⚠️ <b>Today's draft failed validation</b> after "
+                            f"{len(e.attempts)} tries. Nothing was sent for approval.\n"
+                            + "\n".join("• " + html.escape(x) for x in e.attempts[-1]["errors"][:5]))
             sys.exit(f"Draft rejected by validator: {e.attempts[-1]['errors']}")
     else:
         post = stub_post(public)
@@ -120,10 +125,42 @@ def draft(fixture: str | None, use_llm: bool) -> Path:
         "approval": None, "published": None, "metrics": [],
     }
     storage.save_post_record(record, day)
+    if use_llm and telegram.enabled():
+        try:
+            mid = telegram.send_draft(record)
+            print(f"[draft] sent to Telegram for approval (message {mid})", flush=True)
+        except Exception as e:  # the draft is saved either way
+            print(f"[draft] Telegram send failed: {e}", flush=True)
     print(f"[draft] {post_id}: {len(pngs)} slides → {out_dir}", flush=True)
     for u in image_urls:
         print("   ", u)
     return out_dir
+
+
+def decide(post_id: str, action: str, source: str) -> None:
+    """Applies an owner decision from Telegram. Decisions are appended, never overwritten."""
+    if action not in {"approve", "reject", "regen"}:
+        sys.exit(f"unknown action {action!r}")
+    record = storage.load_post_record(post_id)
+    if record is None:
+        telegram.notify(f"⚠️ Couldn't find draft <code>{html.escape(post_id)}</code>.")
+        sys.exit(f"post {post_id} not found")
+    day = record["facts"]["date"]
+    storage.save_decision({
+        "post_id": post_id, "action": action, "source": source,
+        "decided_at": datetime.now(timezone.utc).isoformat(),
+        "spotlight": (record["facts"].get("spotlight") or {}).get("symbol"),
+        "validator_attempts": len(record.get("attempts", [])),
+    }, day)
+    print(f"[decide] {action} {post_id}", flush=True)
+    if action == "approve":
+        telegram.notify(f"✅ Approved <code>{html.escape(post_id)}</code>. "
+                        "Auto-publishing to Instagram arrives in Phase 3; for now, post the slides manually.")
+    elif action == "reject":
+        telegram.notify(f"❌ Rejected <code>{html.escape(post_id)}</code>. Logged so we can learn from it.")
+    else:
+        telegram.notify("🔄 Regenerating with fresh data. New draft in about 3 minutes.")
+        draft(None, use_llm=True)
 
 
 def main(argv=None):
@@ -133,9 +170,15 @@ def main(argv=None):
     d = sub.add_parser("draft")
     d.add_argument("--fixture")
     d.add_argument("--no-llm", action="store_true")
+    c = sub.add_parser("decide")
+    c.add_argument("--post-id", required=True)
+    c.add_argument("--action", required=True, choices=["approve", "reject", "regen"])
+    c.add_argument("--source", default="telegram")
     a = ap.parse_args(argv)
     if a.cmd == "ingest":
         ingest(config.market_date().isoformat(), storage.run_id())
+    elif a.cmd == "decide":
+        decide(a.post_id, a.action, a.source)
     else:
         draft(a.fixture, use_llm=not a.no_llm)
 

@@ -39,10 +39,17 @@ SEC EDGAR (8-K filings) ──────────┼─► ingest ─► R2
 - **Daily draft** (`daily-post.yml`): weekdays 2:12 PM PST. Builds the carousel and attaches the
   slides to the workflow run. Run it any time from **Actions → Daily after-the-bell draft → Run workflow**.
 
+## Approvals (Telegram)
+
+Each draft is sent to Telegram with **Approve / Reject / Regenerate** buttons. Taps go to a
+Cloudflare Worker (`worker/bot.js`), which verifies they came from `TELEGRAM_CHAT_ID` and starts
+`decision.yml`. Every decision is logged to `decisions/` in R2. Failed runs alert you in Telegram.
+
 ## Setup
 
 **Secrets** (Settings → Secrets and variables → Actions → *Secrets*):
-`ANTHROPIC_API_KEY`, `FINNHUB_API_KEY`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`
+`ANTHROPIC_API_KEY`, `FINNHUB_API_KEY`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
+`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TELEGRAM_WEBHOOK_SECRET`
 
 **Variables** (same page → *Variables* tab):
 `R2_PUBLIC_URL` (e.g. `https://pub-xxxx.r2.dev`), `SEC_USER_AGENT` (e.g. `ticker.daily you@email.com`)
@@ -63,6 +70,7 @@ python -m tickerdaily draft
 raw/quotes/dt=YYYY-MM-DD/<run>.parquet
 raw/company_news/…   raw/market_news/…   raw/earnings/…   raw/filings/…
 posts/dt=YYYY-MM-DD/<post_id>.json   # facts, copy, validator attempts, image URLs
+decisions/dt=YYYY-MM-DD/<post_id>-<run>.json   # your approve/reject/regen taps
 ```
 
 Each raw row keeps the untouched API response (`payload`) so anything can be re-derived later.
@@ -70,7 +78,7 @@ Each raw row keeps the untouched API response (`payload`) so anything can be re-
 ## Roadmap
 
 - [x] Phase 1: ingest, data lake, facts, writer, validator, carousel renderer
-- [ ] Phase 2: Telegram approve/reject before posting
+- [x] Phase 2: Telegram approve/reject/regenerate (Cloudflare Worker in `worker/`)
 - [ ] Phase 3: Instagram Graph API publishing + Insights collection
 - [ ] Phase 4: learning loop (engagement-driven scoring, retrieval over past events)
 

@@ -33,6 +33,9 @@ R2_DATA_BUCKET = _env("R2_DATA_BUCKET", "ticker-daily-data")
 R2_MEDIA_BUCKET = _env("R2_MEDIA_BUCKET", "ticker-daily-media")
 R2_PUBLIC_URL = _env("R2_PUBLIC_URL", "").rstrip("/")  # https://pub-xxxx.r2.dev
 
+TELEGRAM_BOT_TOKEN = _env("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = _env("TELEGRAM_CHAT_ID")
+
 # SEC asks every client to identify itself with a contact email.
 SEC_USER_AGENT = _env("SEC_USER_AGENT", "ticker.daily contact@example.com")
 

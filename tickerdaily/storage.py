@@ -100,3 +100,28 @@ def save_post_record(record: dict, day: str) -> Path:
     path.write_text(json.dumps(record, indent=2, default=str))
     upload(path, f"{rel.as_posix()}/{path.name}", config.R2_DATA_BUCKET)
     return path
+
+
+def load_post_record(post_id: str) -> dict | None:
+    """Find a post record locally or in R2. post_id starts with its date (YYYY-MM-DD-...)."""
+    day = post_id[:10]
+    rel = f"posts/dt={day}/{post_id}.json"
+    local = config.LOCAL_DATA_DIR / rel
+    if not local.exists() and config.r2_enabled():
+        local.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            _r2_client().download_file(config.R2_DATA_BUCKET, rel, str(local))
+        except Exception:
+            return None
+    return json.loads(local.read_text()) if local.exists() else None
+
+
+def save_decision(decision: dict, day: str) -> Path:
+    """Append-only log of approve/reject/regen decisions: training data for the learning loop."""
+    rel = Path("decisions") / f"dt={day}"
+    out_dir = config.LOCAL_DATA_DIR / rel
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"{decision['post_id']}-{run_id()}.json"
+    path.write_text(json.dumps(decision, indent=2))
+    upload(path, f"{rel.as_posix()}/{path.name}", config.R2_DATA_BUCKET)
+    return path

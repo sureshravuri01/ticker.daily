@@ -1,0 +1,57 @@
+name: Handle approval decision
+
+# Started by the Cloudflare Worker when you tap a button in Telegram.
+on:
+  workflow_dispatch:
+    inputs:
+      post_id:
+        description: "Draft id, e.g. 2026-11-02-wrap-065001"
+        required: true
+        type: string
+      action:
+        description: "What to do"
+        required: true
+        type: choice
+        options: [approve, reject, regen]
+
+concurrency: daily-post
+
+jobs:
+  decide:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_PUBLIC_URL: ${{ vars.R2_PUBLIC_URL }}
+      SEC_USER_AGENT: ${{ vars.SEC_USER_AGENT }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      POST_ID: ${{ inputs.post_id }}
+      ACTION: ${{ inputs.action }}
+    steps:
+      - name: Check input
+        run: '[[ "$POST_ID" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]{1,40}$ ]] || { echo "bad post id"; exit 1; }'
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: |
+          pip install -r requirements.txt
+          if [ "$ACTION" = "regen" ]; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq fonts-inter
+            python -m playwright install --with-deps chromium
+          fi
+      - name: Apply decision
+        run: python -m tickerdaily decide --post-id "$POST_ID" --action "$ACTION"
+      - name: Tell me if it broke
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            --data-urlencode text="⚠️ ${ACTION} for ${POST_ID} failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" > /dev/null

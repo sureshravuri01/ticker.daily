@@ -90,3 +90,15 @@ def test_counts_from_facts_allowed():
     b = f["breadth"]
     r = validate(good_post(wrap_line=f"{b['down']} of the {b['total']} names we track fell."), f)
     assert r.ok, r.errors
+
+
+def test_telegram_review_and_buttons():
+    from tickerdaily import telegram
+
+    rec = {"post_id": "2026-10-30-wrap-123456", "facts": build(), "attempts": [{}, {}],
+           "caption_full": "Amazon <3 AWS\nNot financial advice.\n\n#stocks", "images": []}
+    txt = telegram.review_text(rec)
+    assert "AMZN" in txt and "after 2 tries" in txt and "&lt;3" in txt  # HTML-escaped
+    for row in telegram.buttons(rec["post_id"])["inline_keyboard"]:
+        for b in row:
+            assert len(b["callback_data"].encode()) <= 64

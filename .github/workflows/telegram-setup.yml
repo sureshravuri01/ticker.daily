@@ -1,0 +1,47 @@
+name: Connect Telegram buttons (run once)
+
+# Points your bot's button taps at the Cloudflare Worker, then sends a test message.
+on:
+  workflow_dispatch:
+    inputs:
+      worker_url:
+        description: "Your Worker URL, e.g. https://ticker-daily-bot.yourname.workers.dev"
+        required: true
+        type: string
+
+jobs:
+  connect:
+    runs-on: ubuntu-latest
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
+      WORKER_URL: ${{ inputs.worker_url }}
+    steps:
+      - name: Register webhook and say hello
+        run: |
+          python3 - <<'EOF'
+          import json, os, urllib.request
+
+          def call(method, payload):
+              req = urllib.request.Request(
+                  f"https://api.telegram.org/bot{os.environ['TELEGRAM_BOT_TOKEN']}/{method}",
+                  data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"})
+              out = json.load(urllib.request.urlopen(req))
+              assert out.get("ok"), out
+              return out["result"]
+
+          url = os.environ["WORKER_URL"].strip().rstrip("/")
+          assert url.startswith("https://"), "worker_url must start with https://"
+          assert os.environ.get("WEBHOOK_SECRET"), "TELEGRAM_WEBHOOK_SECRET secret is missing"
+          call("setWebhook", {"url": url, "secret_token": os.environ["WEBHOOK_SECRET"],
+                              "allowed_updates": ["callback_query", "message"], "drop_pending_updates": True})
+          info = call("getWebhookInfo", {})
+          print("webhook:", info["url"], "| pending:", info.get("pending_update_count"))
+          call("sendMessage", {
+              "chat_id": os.environ["TELEGRAM_CHAT_ID"],
+              "text": "🔌 ticker.daily is connected. Tap the button to test the full loop.",
+              "reply_markup": {"inline_keyboard": [[{"text": "🏓 Ping", "callback_data": "ping|test"}]]},
+          })
+          print("test message sent")
+          EOF
