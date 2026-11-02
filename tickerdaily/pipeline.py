@@ -88,7 +88,16 @@ def draft(fixture: str | None, use_llm: bool) -> Path:
         from . import writer
         if not config.ANTHROPIC_API_KEY:
             sys.exit("ANTHROPIC_API_KEY is not set")
-        post, attempts = writer.write(public)
+        try:
+            post, attempts = writer.write(public)
+        except writer.DraftRejected as e:
+            # Keep failures too: they show which facts/prompts trip the validator.
+            storage.save_post_record({
+                "post_id": f"{day}-wrap-{rid[-7:-1]}-rejected", "created_at": datetime.now(timezone.utc).isoformat(),
+                "run_id": rid, "status": "rejected", "model": config.MODEL,
+                "schema_version": config.SCHEMA_VERSION, "facts": f, "attempts": e.attempts,
+            }, day)
+            sys.exit(f"Draft rejected by validator: {e.attempts[-1]['errors']}")
     else:
         post = stub_post(public)
 

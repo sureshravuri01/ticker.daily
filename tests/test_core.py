@@ -83,3 +83,10 @@ def test_template_renders():
     html = render_html(build(), good_post())
     assert html.count('class="slide"') == 5
     assert "AMZN" in html and "Not financial advice" in html
+
+
+def test_counts_from_facts_allowed():
+    f = factsmod.public_view(build())
+    b = f["breadth"]
+    r = validate(good_post(wrap_line=f"{b['down']} of the {b['total']} names we track fell."), f)
+    assert r.ok, r.errors

@@ -57,8 +57,24 @@ def _walk_strings(x):
             yield from _walk_strings(v)
 
 
+def _walk_ints(x):
+    if isinstance(x, bool):
+        return
+    if isinstance(x, int):
+        yield x
+    elif isinstance(x, dict):
+        for v in x.values():
+            yield from _walk_ints(v)
+    elif isinstance(x, list):
+        for v in x:
+            yield from _walk_ints(v)
+
+
 def allowed_numbers(facts: dict) -> list[Num]:
-    return [n for s in _walk_strings(facts) for n in extract_numbers(s)]
+    nums = [n for s in _walk_strings(facts) for n in extract_numbers(s)]
+    # Plain counts in the facts (e.g. breadth: 31 of 50 down) are fair game too.
+    nums += [Num(float(i), 0, "", False, str(i)) for i in _walk_ints(facts)]
+    return nums
 
 
 def _matches(n: Num, allowed: list[Num]) -> bool:

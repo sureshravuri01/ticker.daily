@@ -32,6 +32,12 @@ Return ONLY a JSON object with these keys:
 }"""
 
 
+class DraftRejected(RuntimeError):
+    def __init__(self, attempts: list[dict]):
+        super().__init__(f"draft failed validation after {len(attempts)} attempts: {attempts[-1]['errors']}")
+        self.attempts = attempts
+
+
 def _parse(text: str) -> dict:
     m = re.search(r"\{.*\}", text, re.S)
     if not m:
@@ -65,4 +71,4 @@ def write(facts: dict, max_attempts: int = 3) -> tuple[dict, list[dict]]:
         messages += [{"role": "assistant", "content": text},
                      {"role": "user", "content": "Fix these problems and return the full JSON again:\n- "
                       + "\n- ".join(result.errors)}]
-    raise RuntimeError(f"draft failed validation after {max_attempts} attempts: {attempts[-1]['errors']}")
+    raise DraftRejected(attempts)
