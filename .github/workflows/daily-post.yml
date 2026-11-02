@@ -1,0 +1,43 @@
+name: Daily after-the-bell draft
+
+on:
+  schedule:
+    # Weekdays at 22:12 UTC = 2:12 PM PST (3:12 PM PDT), after the 4 PM ET close.
+    - cron: "12 22 * * 1-5"
+  workflow_dispatch: {}
+
+concurrency: daily-post
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_PUBLIC_URL: ${{ vars.R2_PUBLIC_URL }}
+      SEC_USER_AGENT: ${{ vars.SEC_USER_AGENT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq fonts-inter
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+      - name: Tests
+        run: python -m pytest -q
+      - name: Build today's draft
+        run: python -m tickerdaily draft
+      - name: Keep the slides as a downloadable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-${{ github.run_id }}
+          path: out/
+          retention-days: 30

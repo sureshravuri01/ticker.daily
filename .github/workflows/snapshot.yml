@@ -1,0 +1,29 @@
+name: Hourly market snapshot
+
+# Builds the dataset: prices, news, filings and earnings every hour the market is open.
+# Over months this becomes the event -> price-reaction history that makes posts smarter.
+on:
+  schedule:
+    - cron: "7 14-21 * * 1-5"   # 14:07–21:07 UTC on weekdays (US trading hours)
+  workflow_dispatch: {}
+
+concurrency: snapshot
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      SEC_USER_AGENT: ${{ vars.SEC_USER_AGENT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m tickerdaily ingest

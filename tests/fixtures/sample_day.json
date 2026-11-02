@@ -1,0 +1,646 @@
+{
+ "_note": "SAMPLE DATA for offline tests. Prices and headlines are invented.",
+ "date": "2026-10-30",
+ "now": "2026-10-30T21:30:00+00:00",
+ "quotes": [
+  {
+   "symbol": "SPY",
+   "price": 583.41,
+   "change_pct": 0.62,
+   "change": 3.62,
+   "high": 585.7436399999999,
+   "low": 578.74272,
+   "open": 583.41,
+   "prev_close": 579.82
+  },
+  {
+   "symbol": "QQQ",
+   "price": 512.88,
+   "change_pct": 1.14,
+   "change": 5.85,
+   "high": 514.93152,
+   "low": 508.77696,
+   "open": 512.88,
+   "prev_close": 507.1
+  },
+  {
+   "symbol": "DIA",
+   "price": 428.1,
+   "change_pct": -0.21,
+   "change": -0.9,
+   "high": 429.8124,
+   "low": 424.6752,
+   "open": 428.1,
+   "prev_close": 429.0
+  },
+  {
+   "symbol": "IWM",
+   "price": 226.35,
+   "change_pct": 0.37,
+   "change": 0.84,
+   "high": 227.2554,
+   "low": 224.5392,
+   "open": 226.35,
+   "prev_close": 225.52
+  },
+  {
+   "symbol": "AAPL",
+   "price": 228.3,
+   "change_pct": -1.92,
+   "change": -4.38,
+   "high": 231.04,
+   "low": 223.96,
+   "open": 228.3,
+   "prev_close": 232.77
+  },
+  {
+   "symbol": "MSFT",
+   "price": 401.03,
+   "change_pct": -1.85,
+   "change": -7.42,
+   "high": 405.84,
+   "low": 393.41,
+   "open": 401.03,
+   "prev_close": 408.59
+  },
+  {
+   "symbol": "NVDA",
+   "price": 335.45,
+   "change_pct": -0.44,
+   "change": -1.48,
+   "high": 339.48,
+   "low": 329.08,
+   "open": 335.45,
+   "prev_close": 336.93
+  },
+  {
+   "symbol": "GOOGL",
+   "price": 63.06,
+   "change_pct": 0.24,
+   "change": 0.15,
+   "high": 63.82,
+   "low": 61.86,
+   "open": 63.06,
+   "prev_close": 62.91
+  },
+  {
+   "symbol": "AMZN",
+   "price": 231.47,
+   "change_pct": 9.86,
+   "change": 22.82,
+   "high": 234.25,
+   "low": 227.07,
+   "open": 231.47,
+   "prev_close": 210.7
+  },
+  {
+   "symbol": "META",
+   "price": 69.82,
+   "change_pct": -1.76,
+   "change": -1.23,
+   "high": 70.66,
+   "low": 68.49,
+   "open": 69.82,
+   "prev_close": 71.07
+  },
+  {
+   "symbol": "TSLA",
+   "price": 271.98,
+   "change_pct": 1.77,
+   "change": 4.81,
+   "high": 275.24,
+   "low": 266.81,
+   "open": 271.98,
+   "prev_close": 267.25
+  },
+  {
+   "symbol": "AVGO",
+   "price": 100.57,
+   "change_pct": -1.13,
+   "change": -1.14,
+   "high": 101.78,
+   "low": 98.66,
+   "open": 100.57,
+   "prev_close": 101.72
+  },
+  {
+   "symbol": "AMD",
+   "price": 387.64,
+   "change_pct": 2.35,
+   "change": 9.11,
+   "high": 392.29,
+   "low": 380.27,
+   "open": 387.64,
+   "prev_close": 378.74
+  },
+  {
+   "symbol": "NFLX",
+   "price": 358.95,
+   "change_pct": -0.3,
+   "change": -1.08,
+   "high": 363.26,
+   "low": 352.13,
+   "open": 358.95,
+   "prev_close": 360.03
+  },
+  {
+   "symbol": "ORCL",
+   "price": 586.47,
+   "change_pct": -1.98,
+   "change": -11.61,
+   "high": 593.51,
+   "low": 575.33,
+   "open": 586.47,
+   "prev_close": 598.32
+  },
+  {
+   "symbol": "CRM",
+   "price": 519.33,
+   "change_pct": -0.81,
+   "change": -4.21,
+   "high": 525.56,
+   "low": 509.46,
+   "open": 519.33,
+   "prev_close": 523.57
+  },
+  {
+   "symbol": "ADBE",
+   "price": 112.23,
+   "change_pct": -1.63,
+   "change": -1.83,
+   "high": 113.58,
+   "low": 110.1,
+   "open": 112.23,
+   "prev_close": 114.09
+  },
+  {
+   "symbol": "INTC",
+   "price": 24.12,
+   "change_pct": -6.41,
+   "change": -1.55,
+   "high": 24.41,
+   "low": 23.66,
+   "open": 24.12,
+   "prev_close": 25.77
+  },
+  {
+   "symbol": "QCOM",
+   "price": 133.01,
+   "change_pct": 0.59,
+   "change": 0.78,
+   "high": 134.61,
+   "low": 130.48,
+   "open": 133.01,
+   "prev_close": 132.23
+  },
+  {
+   "symbol": "PLTR",
+   "price": 394.18,
+   "change_pct": -0.41,
+   "change": -1.62,
+   "high": 398.91,
+   "low": 386.69,
+   "open": 394.18,
+   "prev_close": 395.8
+  },
+  {
+   "symbol": "UBER",
+   "price": 342.21,
+   "change_pct": -1.9,
+   "change": -6.5,
+   "high": 346.32,
+   "low": 335.71,
+   "open": 342.21,
+   "prev_close": 348.84
+  },
+  {
+   "symbol": "SHOP",
+   "price": 63.97,
+   "change_pct": -1.21,
+   "change": -0.77,
+   "high": 64.74,
+   "low": 62.75,
+   "open": 63.97,
+   "prev_close": 64.75
+  },
+  {
+   "symbol": "COIN",
+   "price": 417.83,
+   "change_pct": -0.15,
+   "change": -0.63,
+   "high": 422.84,
+   "low": 409.89,
+   "open": 417.83,
+   "prev_close": 418.46
+  },
+  {
+   "symbol": "SNOW",
+   "price": 209.06,
+   "change_pct": 0.61,
+   "change": 1.28,
+   "high": 211.57,
+   "low": 205.09,
+   "open": 209.06,
+   "prev_close": 207.79
+  },
+  {
+   "symbol": "JPM",
+   "price": 288.32,
+   "change_pct": -0.76,
+   "change": -2.19,
+   "high": 291.78,
+   "low": 282.84,
+   "open": 288.32,
+   "prev_close": 290.53
+  },
+  {
+   "symbol": "BAC",
+   "price": 482.8,
+   "change_pct": 1.16,
+   "change": 5.6,
+   "high": 488.59,
+   "low": 473.63,
+   "open": 482.8,
+   "prev_close": 477.26
+  },
+  {
+   "symbol": "GS",
+   "price": 169.14,
+   "change_pct": 0.56,
+   "change": 0.95,
+   "high": 171.17,
+   "low": 165.93,
+   "open": 169.14,
+   "prev_close": 168.2
+  },
+  {
+   "symbol": "V",
+   "price": 329.36,
+   "change_pct": 2.0,
+   "change": 6.59,
+   "high": 333.31,
+   "low": 323.1,
+   "open": 329.36,
+   "prev_close": 322.9
+  },
+  {
+   "symbol": "MA",
+   "price": 445.78,
+   "change_pct": -0.82,
+   "change": -3.66,
+   "high": 451.13,
+   "low": 437.31,
+   "open": 445.78,
+   "prev_close": 449.47
+  },
+  {
+   "symbol": "BRK.B",
+   "price": 588.7,
+   "change_pct": -1.63,
+   "change": -9.6,
+   "high": 595.76,
+   "low": 577.51,
+   "open": 588.7,
+   "prev_close": 598.45
+  },
+  {
+   "symbol": "WMT",
+   "price": 268.33,
+   "change_pct": 1.43,
+   "change": 3.84,
+   "high": 271.55,
+   "low": 263.23,
+   "open": 268.33,
+   "prev_close": 264.55
+  },
+  {
+   "symbol": "COST",
+   "price": 116.63,
+   "change_pct": 0.15,
+   "change": 0.17,
+   "high": 118.03,
+   "low": 114.41,
+   "open": 116.63,
+   "prev_close": 116.46
+  },
+  {
+   "symbol": "HD",
+   "price": 52.35,
+   "change_pct": 1.01,
+   "change": 0.53,
+   "high": 52.98,
+   "low": 51.36,
+   "open": 52.35,
+   "prev_close": 51.83
+  },
+  {
+   "symbol": "NKE",
+   "price": 465.81,
+   "change_pct": 0.55,
+   "change": 2.56,
+   "high": 471.4,
+   "low": 456.96,
+   "open": 465.81,
+   "prev_close": 463.26
+  },
+  {
+   "symbol": "DIS",
+   "price": 529.02,
+   "change_pct": -0.69,
+   "change": -3.65,
+   "high": 535.37,
+   "low": 518.97,
+   "open": 529.02,
+   "prev_close": 532.7
+  },
+  {
+   "symbol": "KO",
+   "price": 426.32,
+   "change_pct": 0.65,
+   "change": 2.77,
+   "high": 431.44,
+   "low": 418.22,
+   "open": 426.32,
+   "prev_close": 423.57
+  },
+  {
+   "symbol": "PEP",
+   "price": 360.54,
+   "change_pct": -0.01,
+   "change": -0.04,
+   "high": 364.87,
+   "low": 353.69,
+   "open": 360.54,
+   "prev_close": 360.58
+  },
+  {
+   "symbol": "MCD",
+   "price": 508.78,
+   "change_pct": 2.33,
+   "change": 11.85,
+   "high": 514.89,
+   "low": 499.11,
+   "open": 508.78,
+   "prev_close": 497.2
+  },
+  {
+   "symbol": "SBUX",
+   "price": 300.24,
+   "change_pct": 0.99,
+   "change": 2.97,
+   "high": 303.84,
+   "low": 294.54,
+   "open": 300.24,
+   "prev_close": 297.3
+  },
+  {
+   "symbol": "LLY",
+   "price": 64.58,
+   "change_pct": 1.17,
+   "change": 0.76,
+   "high": 65.35,
+   "low": 63.35,
+   "open": 64.58,
+   "prev_close": 63.83
+  },
+  {
+   "symbol": "UNH",
+   "price": 398.86,
+   "change_pct": 2.57,
+   "change": 10.25,
+   "high": 403.65,
+   "low": 391.28,
+   "open": 398.86,
+   "prev_close": 388.87
+  },
+  {
+   "symbol": "JNJ",
+   "price": 498.5,
+   "change_pct": -0.83,
+   "change": -4.14,
+   "high": 504.48,
+   "low": 489.03,
+   "open": 498.5,
+   "prev_close": 502.67
+  },
+  {
+   "symbol": "PFE",
+   "price": 26.8,
+   "change_pct": -3.05,
+   "change": -0.82,
+   "high": 27.12,
+   "low": 26.29,
+   "open": 26.8,
+   "prev_close": 27.64
+  },
+  {
+   "symbol": "XOM",
+   "price": 42.86,
+   "change_pct": 0.02,
+   "change": 0.01,
+   "high": 43.37,
+   "low": 42.05,
+   "open": 42.86,
+   "prev_close": 42.85
+  },
+  {
+   "symbol": "CVX",
+   "price": 125.79,
+   "change_pct": -1.64,
+   "change": -2.06,
+   "high": 127.3,
+   "low": 123.4,
+   "open": 125.79,
+   "prev_close": 127.89
+  },
+  {
+   "symbol": "BA",
+   "price": 63.6,
+   "change_pct": 1.49,
+   "change": 0.95,
+   "high": 64.36,
+   "low": 62.39,
+   "open": 63.6,
+   "prev_close": 62.67
+  },
+  {
+   "symbol": "CAT",
+   "price": 103.72,
+   "change_pct": -1.01,
+   "change": -1.05,
+   "high": 104.96,
+   "low": 101.75,
+   "open": 103.72,
+   "prev_close": 104.78
+  },
+  {
+   "symbol": "GE",
+   "price": 252.84,
+   "change_pct": 1.98,
+   "change": 5.01,
+   "high": 255.87,
+   "low": 248.04,
+   "open": 252.84,
+   "prev_close": 247.93
+  },
+  {
+   "symbol": "F",
+   "price": 75.93,
+   "change_pct": -0.04,
+   "change": -0.03,
+   "high": 76.84,
+   "low": 74.49,
+   "open": 75.93,
+   "prev_close": 75.96
+  },
+  {
+   "symbol": "GM",
+   "price": 343.18,
+   "change_pct": 2.04,
+   "change": 7.0,
+   "high": 347.3,
+   "low": 336.66,
+   "open": 343.18,
+   "prev_close": 336.32
+  },
+  {
+   "symbol": "RIVN",
+   "price": 496.99,
+   "change_pct": 1.95,
+   "change": 9.69,
+   "high": 502.95,
+   "low": 487.55,
+   "open": 496.99,
+   "prev_close": 487.48
+  },
+  {
+   "symbol": "ARM",
+   "price": 188.7,
+   "change_pct": -0.21,
+   "change": -0.4,
+   "high": 190.96,
+   "low": 185.11,
+   "open": 188.7,
+   "prev_close": 189.1
+  },
+  {
+   "symbol": "SMCI",
+   "price": 41.05,
+   "change_pct": 7.12,
+   "change": 2.92,
+   "high": 41.54,
+   "low": 40.27,
+   "open": 41.05,
+   "prev_close": 38.32
+  },
+  {
+   "symbol": "MU",
+   "price": 575.91,
+   "change_pct": -1.48,
+   "change": -8.52,
+   "high": 582.82,
+   "low": 564.97,
+   "open": 575.91,
+   "prev_close": 584.56
+  }
+ ],
+ "company_news": [
+  {
+   "symbol": "AMZN",
+   "headline": "Amazon shares jump as AWS growth accelerates in third quarter",
+   "source": "Reuters",
+   "url": "https://example.com/1",
+   "published_at": "2026-10-30T13:05:00+00:00",
+   "summary": ""
+  },
+  {
+   "symbol": "AMZN",
+   "headline": "Amazon AWS growth accelerates, shares jump in third quarter report",
+   "source": "Yahoo",
+   "url": "https://example.com/2",
+   "published_at": "2026-10-30T13:20:00+00:00",
+   "summary": ""
+  },
+  {
+   "symbol": "AMZN",
+   "headline": "Amazon lifts holiday-quarter sales outlook above Wall Street views",
+   "source": "CNBC",
+   "url": "https://example.com/3",
+   "published_at": "2026-10-30T14:00:00+00:00",
+   "summary": ""
+  },
+  {
+   "symbol": "INTC",
+   "headline": "Intel guides fourth-quarter revenue below estimates on PC softness",
+   "source": "Reuters",
+   "url": "https://example.com/4",
+   "published_at": "2026-10-30T12:00:00+00:00",
+   "summary": ""
+  }
+ ],
+ "market_news": [
+  {
+   "symbol": null,
+   "headline": "Treasury yields edge lower ahead of jobs report",
+   "source": "Reuters",
+   "url": "https://example.com/5",
+   "published_at": "2026-10-30T18:00:00+00:00",
+   "summary": ""
+  }
+ ],
+ "filings": [
+  {
+   "symbol": "AMZN",
+   "form": "8-K",
+   "item_labels": "earnings results",
+   "url": "https://www.sec.gov/example",
+   "filed_date": "2026-10-29"
+  }
+ ],
+ "earnings": [
+  {
+   "symbol": "AMZN",
+   "report_date": "2026-10-29",
+   "hour": "amc",
+   "eps_estimate": 1.58,
+   "eps_actual": 1.95,
+   "revenue_estimate": 177800000000.0,
+   "revenue_actual": 180200000000.0,
+   "quarter": 3,
+   "year": 2026
+  },
+  {
+   "symbol": "PLTR",
+   "report_date": "2026-11-02",
+   "hour": "amc",
+   "eps_estimate": 0.18,
+   "eps_actual": null,
+   "revenue_estimate": 1180000000.0,
+   "revenue_actual": null,
+   "quarter": 3,
+   "year": 2026
+  },
+  {
+   "symbol": "AMD",
+   "report_date": "2026-11-02",
+   "hour": "amc",
+   "eps_estimate": 1.12,
+   "eps_actual": null,
+   "revenue_estimate": 8740000000.0,
+   "revenue_actual": null,
+   "quarter": 3,
+   "year": 2026
+  },
+  {
+   "symbol": "XYZ",
+   "report_date": "2026-11-02",
+   "hour": "bmo",
+   "eps_estimate": 0.05,
+   "eps_actual": null,
+   "revenue_estimate": 200000000.0,
+   "revenue_actual": null,
+   "quarter": 3,
+   "year": 2026
+  }
+ ]
+}

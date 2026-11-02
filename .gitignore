@@ -1,0 +1,13 @@
+# Secrets: never commit (this repo is public)
+.env
+*.env
+
+# Local data and drafts live in R2, not git
+data/
+out/
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.DS_Store
