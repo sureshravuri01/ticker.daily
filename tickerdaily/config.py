@@ -17,22 +17,27 @@ def _load_dotenv() -> None:
 
 _load_dotenv()
 
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "")
-MODEL = os.getenv("TICKER_MODEL", "claude-sonnet-5-5")
 
-R2_ACCOUNT_ID = os.getenv("R2_ACCOUNT_ID", "")
-R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID", "")
-R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY", "")
-R2_DATA_BUCKET = os.getenv("R2_DATA_BUCKET", "ticker-daily-data")
-R2_MEDIA_BUCKET = os.getenv("R2_MEDIA_BUCKET", "ticker-daily-media")
-R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL", "").rstrip("/")  # https://pub-xxxx.r2.dev
+def _env(name: str, default: str = "") -> str:
+    # Strip stray spaces/newlines that sneak in when secrets are pasted.
+    return (os.getenv(name) or default).strip()
+
+ANTHROPIC_API_KEY = _env("ANTHROPIC_API_KEY", "")
+FINNHUB_API_KEY = _env("FINNHUB_API_KEY", "")
+MODEL = _env("TICKER_MODEL", "claude-sonnet-5-5")
+
+R2_ACCOUNT_ID = _env("R2_ACCOUNT_ID", "")
+R2_ACCESS_KEY_ID = _env("R2_ACCESS_KEY_ID", "")
+R2_SECRET_ACCESS_KEY = _env("R2_SECRET_ACCESS_KEY", "")
+R2_DATA_BUCKET = _env("R2_DATA_BUCKET", "ticker-daily-data")
+R2_MEDIA_BUCKET = _env("R2_MEDIA_BUCKET", "ticker-daily-media")
+R2_PUBLIC_URL = _env("R2_PUBLIC_URL", "").rstrip("/")  # https://pub-xxxx.r2.dev
 
 # SEC asks every client to identify itself with a contact email.
-SEC_USER_AGENT = os.getenv("SEC_USER_AGENT", "ticker.daily contact@example.com")
+SEC_USER_AGENT = _env("SEC_USER_AGENT", "ticker.daily contact@example.com")
 
-LOCAL_DATA_DIR = Path(os.getenv("TICKER_DATA_DIR", "data"))
-OUTPUT_DIR = Path(os.getenv("TICKER_OUTPUT_DIR", "out"))
+LOCAL_DATA_DIR = Path(_env("TICKER_DATA_DIR", "data"))
+OUTPUT_DIR = Path(_env("TICKER_OUTPUT_DIR", "out"))
 
 # Market barometers shown on the wrap slide (ETFs track the indices).
 INDEXES = {"SPY": "S&P 500", "QQQ": "Nasdaq 100", "DIA": "Dow 30", "IWM": "Russell 2000"}
@@ -60,6 +65,17 @@ COMPANY_NAMES = {
 }
 
 SCHEMA_VERSION = 1
+
+
+def market_date():
+    """Today's date in New York, rolled back to Friday on weekends (runners use UTC)."""
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+    d = datetime.now(ZoneInfo("America/New_York")).date()
+    while d.weekday() >= 5:
+        d -= timedelta(days=1)
+    return d
 
 
 def r2_enabled() -> bool:

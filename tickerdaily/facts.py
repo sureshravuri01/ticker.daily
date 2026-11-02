@@ -66,7 +66,7 @@ def recently_featured(days: int = 3) -> set[str]:
     root = config.LOCAL_DATA_DIR / "posts"
     if not root.exists():
         return seen
-    cutoff = (date.today() - timedelta(days=days)).isoformat()
+    cutoff = (config.market_date() - timedelta(days=days)).isoformat()
     for p in root.glob("dt=*/*.json"):
         if p.parent.name[3:] >= cutoff:
             try:
@@ -82,7 +82,7 @@ def recently_featured(days: int = 3) -> set[str]:
 def build(quotes: list[dict], company_news: list[dict], market_news: list[dict],
           filings: list[dict], earnings: list[dict], today: date | None = None,
           now: datetime | None = None, avoid: set[str] | None = None) -> dict:
-    today = today or date.today()
+    today = today or config.market_date()
     now = now or datetime.now(timezone.utc)
     avoid = recently_featured() if avoid is None else avoid
     qmap = {q["symbol"]: q for q in quotes}
@@ -109,7 +109,8 @@ def build(quotes: list[dict], company_news: list[dict], market_news: list[dict],
                "down": sum(1 for q in stocks if q["change_pct"] < 0), "total": len(stocks)}
 
     news_by_sym: dict[str, list[dict]] = {}
-    for n in _recent(company_news, 30, now):
+    lag_days = max(0, (now.date() - today).days)  # weekend runs look back to Friday's news
+    for n in _recent(company_news, 30 + 24 * lag_days, now):
         news_by_sym.setdefault(n["symbol"], []).append(n)
     filings_by_sym: dict[str, list[dict]] = {}
     for f in filings:
@@ -158,7 +159,7 @@ def build(quotes: list[dict], company_news: list[dict], market_news: list[dict],
         "revenue_estimate": fmt_big(e.get("revenue_estimate")),
     } for e in upcoming[:4]]
 
-    top_market = dedupe_headlines(sorted(_recent(market_news, 12, now),
+    top_market = dedupe_headlines(sorted(_recent(market_news, 12 + 24 * lag_days, now),
                                          key=lambda n: n.get("published_at") or "", reverse=True))[:5]
 
     return {

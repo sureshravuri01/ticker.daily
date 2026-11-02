@@ -73,7 +73,7 @@ def market_news() -> list[dict]:
 
 
 def company_news(symbols: list[str], days: int = 2) -> list[dict]:
-    today = date.today()
+    today = config.market_date()
     frm = (today - timedelta(days=days)).isoformat()
     out, seen = [], set()
     for s in symbols:
@@ -86,7 +86,7 @@ def company_news(symbols: list[str], days: int = 2) -> list[dict]:
 
 
 def earnings_calendar(days_ahead: int = 7) -> list[dict]:
-    today = date.today()
+    today = config.market_date()
     data = _get("/calendar/earnings", **{"from": today.isoformat(),
                                          "to": (today + timedelta(days=days_ahead)).isoformat()}) or {}
     out = []

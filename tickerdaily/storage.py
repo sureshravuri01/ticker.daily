@@ -83,7 +83,7 @@ def sync_recent_posts(days: int = 4) -> int:
 
     client, n = _r2_client(), 0
     for i in range(days):
-        prefix = f"posts/dt={(date.today() - timedelta(days=i)).isoformat()}/"
+        prefix = f"posts/dt={(config.market_date() - timedelta(days=i)).isoformat()}/"
         for obj in client.list_objects_v2(Bucket=config.R2_DATA_BUCKET, Prefix=prefix).get("Contents", []):
             dest = config.LOCAL_DATA_DIR / obj["Key"]
             dest.parent.mkdir(parents=True, exist_ok=True)

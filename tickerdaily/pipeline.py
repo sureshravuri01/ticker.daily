@@ -69,7 +69,7 @@ def draft(fixture: str | None, use_llm: bool) -> Path:
         today = date.fromisoformat(raw["date"])
         now = datetime.fromisoformat(raw["now"])
     else:
-        today, now = date.today(), datetime.now(timezone.utc)
+        today, now = config.market_date(), datetime.now(timezone.utc)
         print(f"[draft] synced {storage.sync_recent_posts()} recent post records", flush=True)
         raw = ingest(today.isoformat(), rid)
     day = today.isoformat()
@@ -126,7 +126,7 @@ def main(argv=None):
     d.add_argument("--no-llm", action="store_true")
     a = ap.parse_args(argv)
     if a.cmd == "ingest":
-        ingest(date.today().isoformat(), storage.run_id())
+        ingest(config.market_date().isoformat(), storage.run_id())
     else:
         draft(a.fixture, use_llm=not a.no_llm)
 
