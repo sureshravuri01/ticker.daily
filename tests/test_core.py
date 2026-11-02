@@ -102,3 +102,29 @@ def test_telegram_review_and_buttons():
     for row in telegram.buttons(rec["post_id"])["inline_keyboard"]:
         for b in row:
             assert len(b["callback_data"].encode()) <= 64
+
+
+class _FakeClient:
+    """Stands in for the Anthropic client: first reply invents a number, second is clean."""
+    def __init__(self, replies):
+        self.replies, self.calls = list(replies), []
+        self.messages = self
+
+    def create(self, **kw):
+        from types import SimpleNamespace as NS
+        self.calls.append(kw)
+        post = self.replies.pop(0)
+        return NS(content=[NS(type="tool_use", id=f"t{len(self.calls)}", input=post)],
+                  usage=NS(input_tokens=1, output_tokens=1), stop_reason="tool_use")
+
+
+def test_writer_retries_with_validator_feedback():
+    from tickerdaily import writer
+
+    f = factsmod.public_view(build())
+    client = _FakeClient([good_post(hook="Amazon soars 42%"), good_post()])
+    post, attempts = writer.write(f, client=client)
+    assert post["hook"] == good_post()["hook"] and len(attempts) == 2
+    feedback = client.calls[1]["messages"][-1]["content"][0]
+    assert feedback["type"] == "tool_result" and "42%" in feedback["content"]
+    assert client.calls[0]["tool_choice"]["name"] == "submit_post"

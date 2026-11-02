@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import re
 
 from . import config, validator
 
@@ -18,18 +17,8 @@ Hard rules:
 4. Do not copy headline wording; summarize in your own words.
 5. The caption must end with a line containing exactly: Not financial advice.
 
-Return ONLY a JSON object with these keys:
-{
-  "hook": "cover headline, max 55 characters, makes people swipe",
-  "cover_sub": "one line under the hook, max 70 characters",
-  "wrap_line": "one sentence on how the overall market did today",
-  "spotlight_title": "max 40 characters, about the spotlight stock",
-  "spotlight_why": "2-3 short sentences on why the spotlight stock moved",
-  "movers_line": "one sentence tying today's biggest gainers and losers together",
-  "next_line": "one sentence on what to watch next trading day",
-  "caption": "Instagram caption, 3-6 short lines, ends with the disclaimer line",
-  "hashtags": ["5 to 8 relevant hashtags without the # sign"]
-}"""
+Submit the post with the submit_post tool."""
+
 
 
 class DraftRejected(RuntimeError):
@@ -38,37 +27,62 @@ class DraftRejected(RuntimeError):
         self.attempts = attempts
 
 
-def _parse(text: str) -> dict:
-    m = re.search(r"\{.*\}", text, re.S)
-    if not m:
-        raise ValueError("model did not return JSON")
-    return json.loads(m.group(0))
+_STR = {"type": "string"}
+TOOL = {
+    "name": "submit_post",
+    "description": "Submit the finished carousel copy.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "hook": {**_STR, "description": "cover headline, max 55 characters, makes people swipe"},
+            "cover_sub": {**_STR, "description": "one line under the hook, max 70 characters"},
+            "wrap_line": {**_STR, "description": "one sentence on how the overall market did today"},
+            "spotlight_title": {**_STR, "description": "max 40 characters, about the spotlight stock"},
+            "spotlight_why": {**_STR, "description": "2-3 short sentences on why the spotlight stock moved"},
+            "movers_line": {**_STR, "description": "one sentence tying today's biggest gainers and losers together"},
+            "next_line": {**_STR, "description": "one sentence on what to watch next trading day"},
+            "caption": {**_STR, "description": "Instagram caption, 3-6 short lines, ending with: Not financial advice."},
+            "hashtags": {"type": "array", "items": _STR, "description": "5 to 8 hashtags without the # sign"},
+        },
+        "required": ["hook", "cover_sub", "wrap_line", "spotlight_title", "spotlight_why",
+                     "movers_line", "next_line", "caption", "hashtags"],
+    },
+}
 
 
-def write(facts: dict, max_attempts: int = 3) -> tuple[dict, list[dict]]:
+def write(facts: dict, max_attempts: int = 3, client=None) -> tuple[dict, list[dict]]:
     """Returns (post, attempts). Each attempt is logged so we learn which prompts fail."""
-    import anthropic
-
-    client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
+    if client is None:
+        import anthropic
+        client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
     messages = [{"role": "user", "content": "FACTS:\n" + json.dumps(facts, indent=1)}]
     attempts = []
     for _ in range(max_attempts):
-        resp = client.messages.create(model=config.MODEL, max_tokens=1500, system=SYSTEM, messages=messages)
-        text = "".join(b.text for b in resp.content if b.type == "text")
-        try:
-            post = _parse(text)
-        except ValueError as e:
-            attempts.append({"raw": text, "errors": [str(e)]})
-            messages += [{"role": "assistant", "content": text},
-                         {"role": "user", "content": "Return only the JSON object."}]
+        resp = client.messages.create(
+            model=config.MODEL, max_tokens=3000, system=SYSTEM, messages=messages,
+            tools=[TOOL], tool_choice={"type": "tool", "name": TOOL["name"]},
+        )
+        call = next((b for b in resp.content if b.type == "tool_use"), None)
+        usage = {"in": resp.usage.input_tokens, "out": resp.usage.output_tokens}
+        if call is None:  # shouldn't happen with a forced tool, but never crash on it
+            attempts.append({"raw": None, "stop_reason": resp.stop_reason, "usage": usage,
+                             "errors": [f"no tool call (stop_reason={resp.stop_reason})"]})
+            print(f"[writer] no tool call, stop_reason={resp.stop_reason}", flush=True)
             continue
+        post = dict(call.input)
         post["hashtags"] = [h.lstrip("#").replace(" ", "") for h in post.get("hashtags", [])][:8]
         result = validator.validate(post, facts)
-        attempts.append({"raw": text, "errors": result.errors,
-                         "usage": {"in": resp.usage.input_tokens, "out": resp.usage.output_tokens}})
+        attempts.append({"raw": post, "errors": result.errors, "usage": usage})
+        print(f"[writer] attempt {len(attempts)}: {len(result.errors)} problem(s)", flush=True)
+        for e in result.errors:
+            print("    -", e, flush=True)
         if result.ok:
             return post, attempts
-        messages += [{"role": "assistant", "content": text},
-                     {"role": "user", "content": "Fix these problems and return the full JSON again:\n- "
-                      + "\n- ".join(result.errors)}]
+        messages += [
+            {"role": "assistant", "content": resp.content},
+            {"role": "user", "content": [{
+                "type": "tool_result", "tool_use_id": call.id, "is_error": True,
+                "content": "Fix these problems and submit again:\n- " + "\n- ".join(result.errors),
+            }]},
+        ]
     raise DraftRejected(attempts)
