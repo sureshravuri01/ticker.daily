@@ -32,7 +32,7 @@ def cik_map(symbols: list[str]) -> dict[str, int]:
     return {s: by_ticker[s.replace(".", "-")] for s in symbols if s.replace(".", "-") in by_ticker}
 
 
-def recent_filings(symbols: list[str], days: int = 2) -> list[dict]:
+def recent_filings(symbols: list[str], days: int = 4) -> list[dict]:
     since = (config.market_date() - timedelta(days=days)).isoformat()
     out = []
     for sym, cik in cik_map(symbols).items():
