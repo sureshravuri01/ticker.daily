@@ -30,6 +30,8 @@ jobs:
       SEC_USER_AGENT: ${{ vars.SEC_USER_AGENT }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+      IG_USER_ID: ${{ vars.IG_USER_ID }}
       POST_ID: ${{ inputs.post_id }}
       ACTION: ${{ inputs.action }}
     steps:

@@ -125,3 +125,39 @@ def save_decision(decision: dict, day: str) -> Path:
     path.write_text(json.dumps(decision, indent=2))
     upload(path, f"{rel.as_posix()}/{path.name}", config.R2_DATA_BUCKET)
     return path
+
+
+# ---------- small JSON helpers for the private data bucket ----------
+def get_json(key: str) -> dict | None:
+    local = config.LOCAL_DATA_DIR / key
+    if config.r2_enabled():
+        local.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            _r2_client().download_file(config.R2_DATA_BUCKET, key, str(local))
+        except Exception:
+            return None
+    return json.loads(local.read_text()) if local.exists() else None
+
+
+def put_json(key: str, obj: dict) -> None:
+    """Overwrites. Only for mutable state (e.g. the current Instagram token), never for history."""
+    local = config.LOCAL_DATA_DIR / key
+    local.parent.mkdir(parents=True, exist_ok=True)
+    local.write_text(json.dumps(obj, indent=2, default=str))
+    upload(local, key, config.R2_DATA_BUCKET)
+
+
+def list_keys(prefix: str) -> list[str]:
+    if config.r2_enabled():
+        keys, token = [], None
+        while True:
+            kw = {"Bucket": config.R2_DATA_BUCKET, "Prefix": prefix}
+            if token:
+                kw["ContinuationToken"] = token
+            page = _r2_client().list_objects_v2(**kw)
+            keys += [o["Key"] for o in page.get("Contents", [])]
+            if not page.get("IsTruncated"):
+                return keys
+            token = page["NextContinuationToken"]
+    root = config.LOCAL_DATA_DIR
+    return sorted(p.relative_to(root).as_posix() for p in root.glob(prefix + "**/*") if p.is_file())

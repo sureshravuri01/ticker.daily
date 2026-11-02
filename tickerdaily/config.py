@@ -33,6 +33,9 @@ R2_DATA_BUCKET = _env("R2_DATA_BUCKET", "ticker-daily-data")
 R2_MEDIA_BUCKET = _env("R2_MEDIA_BUCKET", "ticker-daily-media")
 R2_PUBLIC_URL = _env("R2_PUBLIC_URL", "").rstrip("/")  # https://pub-xxxx.r2.dev
 
+IG_ACCESS_TOKEN = _env("IG_ACCESS_TOKEN")
+IG_USER_ID = _env("IG_USER_ID")
+
 TELEGRAM_BOT_TOKEN = _env("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = _env("TELEGRAM_CHAT_ID")
 

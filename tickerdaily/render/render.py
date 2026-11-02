@@ -1,4 +1,4 @@
-"""Renders the carousel HTML template to 1080x1350 PNGs (Instagram's 4:5 portrait size)."""
+"""Renders the carousel HTML template to 1080x1350 JPEGs (Instagram's 4:5 portrait size)."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -26,8 +26,9 @@ def render_pngs(facts: dict, post: dict, out_dir: Path) -> list[Path]:
         page.set_content(html, wait_until="networkidle")
         page.evaluate("document.fonts.ready")
         for i, el in enumerate(page.query_selector_all(".slide"), start=1):
-            path = out_dir / f"slide_{i}.png"
-            el.screenshot(path=str(path))
+            # Instagram's publishing API accepts JPEG only.
+            path = out_dir / f"slide_{i}.jpg"
+            el.screenshot(path=str(path), type="jpeg", quality=92)
             paths.append(path)
         browser.close()
     return paths

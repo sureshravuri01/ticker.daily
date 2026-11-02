@@ -1,0 +1,51 @@
+name: Instagram upkeep
+
+# Hourly: snapshot post metrics at 1h / 24h / 7d after publishing (data for the learning loop).
+# Weekly: refresh the Instagram token so it never expires.
+on:
+  schedule:
+    - cron: "41 * * * *"     # insights, every hour
+    - cron: "23 17 * * 0"    # token refresh, Sundays
+  workflow_dispatch:
+    inputs:
+      task:
+        type: choice
+        options: [insights, refresh-token]
+        default: insights
+
+concurrency: instagram-upkeep
+
+jobs:
+  upkeep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+      IG_USER_ID: ${{ vars.IG_USER_ID }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      TASK: ${{ github.event.schedule == '23 17 * * 0' && 'refresh-token' || inputs.task || 'insights' }}
+    steps:
+      - name: Skip until Instagram is connected
+        id: gate
+        run: '[ -n "$IG_ACCESS_TOKEN" ] && [ -n "$IG_USER_ID" ] && echo "go=1" >> "$GITHUB_OUTPUT" || echo "Instagram not connected yet; nothing to do."'
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.go
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.go
+        with:
+          python-version: "3.12"
+          cache: pip
+      - if: steps.gate.outputs.go
+        run: pip install -q -r requirements.txt
+      - if: steps.gate.outputs.go
+        run: python -m tickerdaily "$TASK"
+      - name: Tell me if it broke
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            --data-urlencode text="⚠️ Instagram ${TASK} failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" > /dev/null

@@ -45,14 +45,18 @@ Each draft is sent to Telegram with **Approve / Reject / Regenerate** buttons. T
 Cloudflare Worker (`worker/bot.js`), which verifies they came from `TELEGRAM_CHAT_ID` and starts
 `decision.yml`. Every decision is logged to `decisions/` in R2. Failed runs alert you in Telegram.
 
+**Approve publishes** the carousel to Instagram (once only; drafts are blocked after the next
+market open so stale numbers never go out). `instagram-upkeep.yml` collects metrics at 1h/24h/7d
+and refreshes the Instagram token weekly.
+
 ## Setup
 
 **Secrets** (Settings → Secrets and variables → Actions → *Secrets*):
 `ANTHROPIC_API_KEY`, `FINNHUB_API_KEY`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
-`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TELEGRAM_WEBHOOK_SECRET`
+`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TELEGRAM_WEBHOOK_SECRET`, `IG_ACCESS_TOKEN`
 
 **Variables** (same page → *Variables* tab):
-`R2_PUBLIC_URL` (e.g. `https://pub-xxxx.r2.dev`), `SEC_USER_AGENT` (e.g. `ticker.daily you@email.com`)
+`R2_PUBLIC_URL` (e.g. `https://pub-xxxx.r2.dev`), `SEC_USER_AGENT` (e.g. `ticker.daily you@email.com`), `IG_USER_ID`
 
 ## Run locally
 
@@ -71,6 +75,8 @@ raw/quotes/dt=YYYY-MM-DD/<run>.parquet
 raw/company_news/…   raw/market_news/…   raw/earnings/…   raw/filings/…
 posts/dt=YYYY-MM-DD/<post_id>.json   # facts, copy, validator attempts, image URLs
 decisions/dt=YYYY-MM-DD/<post_id>-<run>.json   # your approve/reject/regen taps
+published/dt=YYYY-MM-DD/<post_id>.json         # Instagram media id + permalink
+metrics/<post_id>/{1h,24h,7d}.json             # reach, likes, saves, shares…
 ```
 
 Each raw row keeps the untouched API response (`payload`) so anything can be re-derived later.
@@ -79,7 +85,7 @@ Each raw row keeps the untouched API response (`payload`) so anything can be re-
 
 - [x] Phase 1: ingest, data lake, facts, writer, validator, carousel renderer
 - [x] Phase 2: Telegram approve/reject/regenerate (Cloudflare Worker in `worker/`)
-- [ ] Phase 3: Instagram Graph API publishing + Insights collection
+- [x] Phase 3: Instagram publishing on Approve, token refresh, insights at 1h/24h/7d
 - [ ] Phase 4: learning loop (engagement-driven scoring, retrieval over past events)
 
 *Not financial advice. Market data from Finnhub and SEC EDGAR.*

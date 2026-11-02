@@ -3,6 +3,7 @@
     python -m tickerdaily ingest            snapshot everything into the data lake
     python -m tickerdaily draft             ingest + build facts + write + validate + render
     python -m tickerdaily decide --post-id ID --action approve|reject|regen
+    python -m tickerdaily refresh-token | insights
     python -m tickerdaily draft --fixture tests/fixtures/sample_day.json --no-llm   offline test
 """
 from __future__ import annotations
@@ -11,7 +12,7 @@ import argparse
 import html
 import json
 import sys
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from . import config, facts as factsmod, storage, telegram
@@ -154,13 +155,89 @@ def decide(post_id: str, action: str, source: str) -> None:
     }, day)
     print(f"[decide] {action} {post_id}", flush=True)
     if action == "approve":
-        telegram.notify(f"✅ Approved <code>{html.escape(post_id)}</code>. "
-                        "Auto-publishing to Instagram arrives in Phase 3; for now, post the slides manually.")
+        publish(record)
     elif action == "reject":
         telegram.notify(f"❌ Rejected <code>{html.escape(post_id)}</code>. Logged so we can learn from it.")
     else:
         telegram.notify("🔄 Regenerating with fresh data. New draft in about 3 minutes.")
         draft(None, use_llm=True)
+
+
+PUBLISHED_PREFIX = "published/"
+CHECKPOINTS = {"1h": timedelta(hours=1), "24h": timedelta(hours=24), "7d": timedelta(days=7)}
+
+
+def still_fresh(day: str, now: datetime | None = None) -> bool:
+    """A draft's numbers are current until the next session opens (9:30 AM New York time)."""
+    from zoneinfo import ZoneInfo
+
+    ny = ZoneInfo("America/New_York")
+    nxt = factsmod.next_business_day(date.fromisoformat(day))
+    next_open = datetime(nxt.year, nxt.month, nxt.day, 9, 30, tzinfo=ny)
+    return (now or datetime.now(timezone.utc)) < next_open
+
+
+def publish(record: dict) -> None:
+    from . import instagram
+
+    post_id, day = record["post_id"], record["facts"]["date"]
+    tag = f"<code>{html.escape(post_id)}</code>"
+    if not (config.IG_USER_ID and (config.IG_ACCESS_TOKEN or storage.get_json(instagram.TOKEN_STATE_KEY))):
+        telegram.notify(f"✅ Approved {tag}. Instagram isn't connected yet, so post the slides manually for now.")
+        return
+    key = f"{PUBLISHED_PREFIX}dt={day}/{post_id}.json"
+    done = storage.get_json(key)
+    if done:  # a double tap or a re-run must never post twice
+        telegram.notify(f"ℹ️ {tag} is already live: {done.get('permalink') or done['media_id']}")
+        return
+    if not still_fresh(day):
+        telegram.notify(f"⛔ Not publishing {tag}: it uses data from {day}, and stale market numbers "
+                        "would mislead followers. Tap Regenerate on a fresh draft instead.")
+        return
+    telegram.notify(f"⏳ Publishing {tag} to Instagram…")
+    try:
+        result = instagram.publish_carousel(record["images"], record["caption_full"])
+    except Exception as e:
+        telegram.notify(f"⚠️ Publishing {tag} failed: {html.escape(str(e))[:500]}")
+        raise
+    storage.put_json(key, {
+        "post_id": post_id, "media_id": result["media_id"], "permalink": result["permalink"],
+        "published_at": datetime.now(timezone.utc).isoformat(), "market_date": day,
+        "spotlight": (record["facts"].get("spotlight") or {}).get("symbol"),
+        "market_tone": record["facts"].get("market_tone"), "format": record.get("format"),
+        "hook": record.get("post", {}).get("hook"),
+    })
+    print(f"[publish] {post_id} -> {result['permalink'] or result['media_id']}", flush=True)
+    telegram.notify(f"🚀 Live on Instagram: {result['permalink'] or result['media_id']}")
+
+
+def collect_insights(now: datetime | None = None) -> int:
+    """Snapshots each published post's metrics at 1h, 24h and 7d. These feed the learning loop."""
+    from . import instagram
+
+    now = now or datetime.now(timezone.utc)
+    n = 0
+    for key in storage.list_keys(PUBLISHED_PREFIX):
+        pub = storage.get_json(key)
+        if not pub:
+            continue
+        age = now - datetime.fromisoformat(pub["published_at"])
+        have = {k.rsplit("/", 1)[-1].removesuffix(".json") for k in storage.list_keys(f"metrics/{pub['post_id']}/")}
+        for name, delta in CHECKPOINTS.items():
+            if name in have or age < delta or age > delta + timedelta(days=3):
+                continue
+            try:
+                m = instagram.insights(pub["media_id"])
+            except Exception as e:
+                print(f"[insights] {pub['post_id']} {name}: {e}", flush=True)
+                continue
+            storage.put_json(f"metrics/{pub['post_id']}/{name}.json", {
+                "post_id": pub["post_id"], "media_id": pub["media_id"], "checkpoint": name,
+                "collected_at": now.isoformat(), "age_hours": round(age.total_seconds() / 3600, 2), "metrics": m,
+            })
+            print(f"[insights] {pub['post_id']} {name}: {m}", flush=True)
+            n += 1
+    return n
 
 
 def main(argv=None):
@@ -174,8 +251,16 @@ def main(argv=None):
     c.add_argument("--post-id", required=True)
     c.add_argument("--action", required=True, choices=["approve", "reject", "regen"])
     c.add_argument("--source", default="telegram")
+    sub.add_parser("refresh-token")
+    sub.add_parser("insights")
     a = ap.parse_args(argv)
-    if a.cmd == "ingest":
+    if a.cmd == "refresh-token":
+        from . import instagram
+        info = instagram.refresh_token()
+        print(f"[token] refreshed, expires {info['expires_at']}", flush=True)
+    elif a.cmd == "insights":
+        print(f"[insights] collected {collect_insights()} snapshot(s)", flush=True)
+    elif a.cmd == "ingest":
         ingest(config.market_date().isoformat(), storage.run_id())
     elif a.cmd == "decide":
         decide(a.post_id, a.action, a.source)
