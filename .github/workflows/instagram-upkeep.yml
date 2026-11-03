@@ -10,7 +10,7 @@ on:
     inputs:
       task:
         type: choice
-        options: [insights, refresh-token]
+        options: [ig-check, insights, refresh-token]
         default: insights
 
 concurrency: instagram-upkeep

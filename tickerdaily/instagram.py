@@ -13,7 +13,8 @@ import requests
 
 from . import config, storage
 
-GRAPH = "https://graph.instagram.com"
+GRAPH = "https://graph.instagram.com"      # Instagram Login tokens (start with IGAA)
+FB_GRAPH = "https://graph.facebook.com"    # Facebook / system-user tokens (start with EAA)
 TOKEN_STATE_KEY = "state/ig_token.json"
 INSIGHT_METRICS = ["reach", "views", "likes", "comments", "saved", "shares", "total_interactions"]
 
@@ -30,9 +31,19 @@ def token() -> str:
     return t
 
 
+def host(tok: str) -> str:
+    """Both token kinds use the same publishing endpoints, on different hosts."""
+    return FB_GRAPH if tok.startswith("EAA") else GRAPH
+
+
+def expires(tok: str) -> bool:
+    return not tok.startswith("EAA")  # system-user tokens are set to never expire
+
+
 def _req(method: str, path: str, tok: str | None = None, **params) -> dict:
-    params["access_token"] = tok or token()
-    r = requests.request(method, f"{GRAPH}{path}", params=params if method == "GET" else None,
+    tok = tok or token()
+    params["access_token"] = tok
+    r = requests.request(method, f"{host(tok)}{path}", params=params if method == "GET" else None,
                          data=params if method != "GET" else None, timeout=60)
     data = r.json() if r.content else {}
     if r.status_code >= 400 or "error" in data:
@@ -80,7 +91,10 @@ def publish_carousel(image_urls: list[str], caption: str, delay: float = 10) -> 
 
 
 def refresh_token() -> dict:
-    """Long-lived tokens last ~60 days and can be refreshed once they're at least a day old."""
+    """Instagram Login tokens last ~60 days and can be refreshed once they're a day old.
+    System-user tokens never expire, so there is nothing to do."""
+    if not expires(token()):
+        return {"expires_at": "never (system-user token)"}
     data = _req("GET", "/refresh_access_token", grant_type="ig_refresh_token")
     now = datetime.now(timezone.utc)
     state = {
@@ -90,6 +104,14 @@ def refresh_token() -> dict:
     }
     storage.put_json(TOKEN_STATE_KEY, state)
     return {k: v for k, v in state.items() if k != "access_token"}
+
+
+def whoami() -> dict:
+    """Connection check: which account does the token act as, and can it see IG_USER_ID?"""
+    tok = token()
+    return _req("GET", f"/{config.IG_USER_ID}", tok, fields="id,username") | {
+        "token_kind": "system-user (never expires)" if not expires(tok) else "instagram-login (auto-refreshed)",
+        "host": host(tok)}
 
 
 def insights(media_id: str) -> dict:

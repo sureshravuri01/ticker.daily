@@ -253,11 +253,18 @@ def main(argv=None):
     c.add_argument("--source", default="telegram")
     sub.add_parser("refresh-token")
     sub.add_parser("insights")
+    sub.add_parser("ig-check")
     a = ap.parse_args(argv)
     if a.cmd == "refresh-token":
         from . import instagram
         info = instagram.refresh_token()
         print(f"[token] refreshed, expires {info['expires_at']}", flush=True)
+    elif a.cmd == "ig-check":
+        from . import instagram
+        me = instagram.whoami()
+        print(f"[ig] connected as @{me.get('username')} ({me['id']}) via {me['host']}, token: {me['token_kind']}", flush=True)
+        telegram.notify(f"🔗 Instagram connected as <b>@{html.escape(me.get('username') or '?')}</b>. "
+                        "Approve is now live: tapping it publishes the carousel.")
     elif a.cmd == "insights":
         print(f"[insights] collected {collect_insights()} snapshot(s)", flush=True)
     elif a.cmd == "ingest":

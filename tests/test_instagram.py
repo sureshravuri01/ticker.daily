@@ -13,7 +13,7 @@ class FakeIG:
 
     def __call__(self, method, url, params=None, data=None, timeout=None):
         p = params or data
-        path = url.replace(instagram.GRAPH, "")
+        path = url.replace(instagram.GRAPH, "").replace(instagram.FB_GRAPH, "")
         self.calls.append((method, path, {k: v for k, v in p.items() if k != "access_token"}))
         if path.endswith("/media") and method == "POST":
             self.n += 1
@@ -121,3 +121,11 @@ def test_token_refresh_saved(ig):
     instagram.refresh_token()
     assert storage.get_json(instagram.TOKEN_STATE_KEY)["access_token"] == "NEW"
     assert instagram.token() == "NEW"
+
+
+def test_system_user_token_uses_facebook_host(ig, monkeypatch):
+    monkeypatch.setattr(config, "IG_ACCESS_TOKEN", "EAAsystem")
+    instagram.publish_carousel(URLS, "c")
+    assert instagram.host("EAAx") == instagram.FB_GRAPH and instagram.host("IGAAx") == instagram.GRAPH
+    assert instagram.refresh_token()["expires_at"].startswith("never")
+    assert storage.get_json(instagram.TOKEN_STATE_KEY) is None  # nothing overwritten
