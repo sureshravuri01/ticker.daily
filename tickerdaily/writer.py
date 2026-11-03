@@ -16,6 +16,11 @@ Hard rules:
 3. Never give advice: no buy/sell/hold language, no predictions, no price targets.
 4. Do not copy headline wording; summarize in your own words.
 5. The caption must end with a line containing exactly: Not financial advice.
+6. MEMORY holds history: earnings track record, 52-week range, streaks, past spotlights and what
+   happened the session after. Use it to add perspective, and put the single most interesting
+   point in context_line. History never predicts the future: never say or imply a pattern will
+   repeat ("could rise again", "history suggests"). If nothing in MEMORY is interesting, leave
+   context_line as an empty string.
 
 Reply with the post as JSON matching the schema."""
 
@@ -38,11 +43,12 @@ SCHEMA = {
         "spotlight_why": {**_STR, "description": "2-3 short sentences on why the spotlight stock moved"},
         "movers_line": {**_STR, "description": "one sentence tying today's biggest gainers and losers together"},
         "next_line": {**_STR, "description": "one sentence on what to watch next trading day"},
+        "context_line": {**_STR, "description": "one sentence of historical context from MEMORY, max 110 characters, or empty"},
         "caption": {**_STR, "description": "Instagram caption, 3-6 short lines, ending with: Not financial advice."},
         "hashtags": {"type": "array", "items": _STR, "description": "5 to 8 hashtags without the # sign"},
     },
     "required": ["hook", "cover_sub", "wrap_line", "spotlight_title", "spotlight_why",
-                 "movers_line", "next_line", "caption", "hashtags"],
+                 "movers_line", "next_line", "context_line", "caption", "hashtags"],
     "additionalProperties": False,
 }
 

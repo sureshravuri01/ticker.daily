@@ -60,6 +60,23 @@
   .earn { display: flex; gap: 18px; margin-top: 28px; }
   .earn div { flex: 1; background: var(--panel); border: 2px solid var(--line); border-radius: 20px; padding: 22px 24px; font-size: 26px; color: var(--muted); }
   .earn b { display: block; font-size: 36px; color: var(--text); margin-top: 6px; }
+  .ctx { display: flex; gap: 20px; align-items: baseline; margin-top: 24px; font-size: 30px; line-height: 1.38;
+         color: #D3DAE0; padding: 0 6px; }
+  .ctx span { flex: none; font-size: 21px; font-weight: 800; letter-spacing: .14em; color: var(--bell);
+              border: 2px solid rgba(245,184,65,.45); border-radius: 8px; padding: 4px 10px; }
+  /* Applied by the renderer only if a slide's content overflows. */
+  .slide.tight { padding-top: 72px; }
+  .slide.tight .top { margin-bottom: 44px; }
+  .slide.tight .meta { margin-bottom: 34px; }
+  .slide.tight .why { padding: 32px 36px; }
+  .slide.tight .why p { font-size: 31px; }
+  .slide.tight .ctx { font-size: 27px; margin-top: 18px; }
+  .slide.tight .earn { margin-top: 18px; }
+  .slide.tight .lede { font-size: 32px !important; }
+  .slide.tight .mv { margin-bottom: 16px; }
+  .slide.tighter .why p { font-size: 28px; }
+  .slide.tighter .tick .s { font-size: 112px; }
+  .slide.tighter .big { font-size: 84px; }
   .src { font-size: 24px; color: var(--muted); margin-top: 26px; }
 
   /* movers */
@@ -132,6 +149,7 @@
   <div class="big {{ 'up' if s.up else 'down' }}">{{ s.change_pct }}</div>
   <div class="meta">Closed at {{ s.price }}{% if s.day_range %} · Day range {{ s.day_range }}{% endif %}</div>
   <div class="why"><h3>{{ p.spotlight_title }}</h3><p>{{ p.spotlight_why }}</p></div>
+  {% if p.get('context_line') %}<div class="ctx"><span>CONTEXT</span>{{ p.context_line }}</div>{% endif %}
   {% if s.earnings and s.earnings.eps_actual %}
   <div class="earn">
     <div>EPS vs est.<b>{{ s.earnings.eps_actual }} <span style="color:var(--muted);font-weight:500">/ {{ s.earnings.eps_estimate }}</span></b></div>
@@ -181,8 +199,7 @@
   {% endfor %}
   <p class="lede" style="margin-top:22px;font-size:34px">{{ p.next_line }}</p>
   <div class="spacer"></div>
-  <p class="cta">Follow <b>@ticker.daily</b> for the why behind every move.</p>
-  <div style="height:36px"></div>
+  <p class="cta" style="margin-bottom:36px">Follow <b>@ticker.daily</b> for the why behind every move.</p>
   {{ foot() }}
 </section>
 </body>

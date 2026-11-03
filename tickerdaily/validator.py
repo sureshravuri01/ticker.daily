@@ -13,7 +13,13 @@ NUM_RE = re.compile(
     r"(?<![A-Za-z0-9])[-+−]?\$?(\d{1,3}(?:,\d{3})+|\d+)(\.\d+)?\s?(%|[KMBT](?![A-Za-z])|billion|million|trillion|thousand)?",
 )
 UNIT_ALIASES = {"billion": "B", "million": "M", "trillion": "T", "thousand": "K"}
-SMALL_INT_OK = set(range(0, 11))  # "3 things", "Q4", "top 5" — never with % or $
+SMALL_INT_OK = set(range(0, 11))  # "3 things", "top 5" — never with % or $
+# ...but a small number counting time ("4 straight quarters", "3 sessions") is a factual claim.
+COUNT_CLAIM_RE = re.compile(
+    r"\s*(straight|consecutive|successive|back-to-back)?\s*-?\s*"
+    r"(quarters?|sessions?|days?|weeks?|months?|years?|times|trading|beats?|misses|gains?|losses|in a row)\b",
+    re.I,
+)
 
 ADVICE_RE = re.compile(
     r"\b(you should (buy|sell|invest)|buy now|sell now|strong buy|must[- ]buy|price target of|"
@@ -29,6 +35,7 @@ class Num:
     unit: str
     money: bool
     raw: str
+    tail: str = ""
 
 
 def extract_numbers(text: str) -> list[Num]:
@@ -42,6 +49,7 @@ def extract_numbers(text: str) -> list[Num]:
             unit=unit,
             money="$" in m.group(0),
             raw=m.group(0).strip(),
+            tail=text[m.end():m.end() + 30],
         ))
     return out
 
@@ -78,7 +86,8 @@ def allowed_numbers(facts: dict) -> list[Num]:
 
 
 def _matches(n: Num, allowed: list[Num]) -> bool:
-    if n.unit == "" and not n.money and n.decimals == 0 and n.value in SMALL_INT_OK:
+    if (n.unit == "" and not n.money and n.decimals == 0 and n.value in SMALL_INT_OK
+            and not COUNT_CLAIM_RE.match(n.tail)):
         return True
     for a in allowed:
         if a.unit != n.unit:

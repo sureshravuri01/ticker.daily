@@ -129,3 +129,21 @@ def test_writer_retries_with_validator_feedback():
     assert feedback["role"] == "user" and "42%" in feedback["content"]
     fmt = client.calls[0]["extra_body"]["output_config"]["format"]
     assert fmt["type"] == "json_schema" and fmt["schema"]["additionalProperties"] is False
+
+
+def test_small_counts_of_time_must_be_facts():
+    f = factsmod.public_view(build())
+    assert validate(good_post(movers_line="Three takeaways: top 3 movers were chips."), f).ok
+    assert not validate(good_post(movers_line="Intel fell for 5 straight sessions."), f).ok
+    assert not validate(good_post(movers_line="Amazon beat estimates 4 quarters in a row."), f).ok
+
+
+def test_market_date_follows_the_session():
+    from datetime import datetime, timezone
+    from tickerdaily.config import market_date
+    utc = lambda *a: datetime(*a, tzinfo=timezone.utc)
+    assert str(market_date(utc(2026, 11, 2, 22, 15))) == "2026-11-02"   # Mon 2:15 PM PT
+    assert str(market_date(utc(2026, 11, 3, 6, 21))) == "2026-11-02"    # Mon 10:21 PM PT = Tue 1:21 AM ET
+    assert str(market_date(utc(2026, 11, 3, 14, 31))) == "2026-11-03"   # Tue 9:31 AM ET
+    assert str(market_date(utc(2026, 11, 7, 18, 0))) == "2026-11-06"    # Saturday -> Friday
+    assert str(market_date(utc(2026, 11, 9, 13, 0))) == "2026-11-06"    # Mon 8 AM ET -> Friday

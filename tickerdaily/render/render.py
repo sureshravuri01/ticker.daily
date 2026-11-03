@@ -25,6 +25,20 @@ def render_pngs(facts: dict, post: dict, out_dir: Path) -> list[Path]:
         page = browser.new_page(viewport={"width": 1080, "height": 1350})
         page.set_content(html, wait_until="networkidle")
         page.evaluate("document.fonts.ready")
+        # Long copy must never push content into the footer: shrink step by step if needed.
+        tightened = page.evaluate("""() => {
+            const fits = s => { const f = s.querySelector('.foot');
+                const kids = [...s.children].filter(c => c !== f && !c.classList.contains('spacer'));
+                const bottom = Math.max(...kids.map(c => c.getBoundingClientRect().bottom));
+                return !f || bottom <= f.getBoundingClientRect().top - 12; };
+            const out = [];
+            document.querySelectorAll('.slide').forEach((s, i) => {
+                for (const cls of ['tight', 'tighter']) { if (fits(s)) break; s.classList.add(cls); out.push(i + 1); }
+            });
+            return out;
+        }""")
+        if tightened:
+            print(f"[render] tightened layout on slide(s) {sorted(set(tightened))}", flush=True)
         for i, el in enumerate(page.query_selector_all(".slide"), start=1):
             # Instagram's publishing API accepts JPEG only.
             path = out_dir / f"slide_{i}.jpg"

@@ -98,3 +98,18 @@ def earnings_calendar(days_ahead: int = 7) -> list[dict]:
             "quarter": e.get("quarter"), "year": e.get("year"), "payload": e,
         })
     return out
+
+
+def earnings_history(symbol: str) -> list[dict]:
+    """Last reported quarters with actual vs estimated EPS (newest first)."""
+    return [{
+        "period": e.get("period"), "quarter": e.get("quarter"), "year": e.get("year"),
+        "eps_actual": e.get("actual"), "eps_estimate": e.get("estimate"),
+        "surprise_pct": e.get("surprisePercent"),
+    } for e in (_get("/stock/earnings", symbol=symbol) or []) if e.get("actual") is not None]
+
+
+def price_range(symbol: str) -> dict:
+    """52-week high/low from Finnhub's basic financials."""
+    m = (_get("/stock/metric", symbol=symbol, metric="all") or {}).get("metric") or {}
+    return {k: m.get(k) for k in ("52WeekHigh", "52WeekLow", "52WeekHighDate", "52WeekLowDate")}

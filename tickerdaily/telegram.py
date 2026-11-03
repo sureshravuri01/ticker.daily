@@ -52,6 +52,8 @@ def review_text(record: dict) -> str:
         f"Spotlight: <b>{html.escape(s.get('symbol', '?'))}</b> {html.escape(s.get('change_pct', ''))}"
         f" · market {html.escape(f['market_tone'])}",
         f"Validator: passed{' after ' + str(n) + ' tries' if n > 1 else ''}",
+        *([f"🧠 Context: {html.escape(record['post']['context_line'])}"]
+          if (record.get("post") or {}).get("context_line") else []),
         "",
         "<b>Caption</b>",
         html.escape(record["caption_full"]),

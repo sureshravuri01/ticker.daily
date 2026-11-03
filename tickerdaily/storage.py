@@ -161,3 +161,15 @@ def list_keys(prefix: str) -> list[str]:
             token = page["NextContinuationToken"]
     root = config.LOCAL_DATA_DIR
     return sorted(p.relative_to(root).as_posix() for p in root.glob(prefix + "**/*") if p.is_file())
+
+
+def fetch(key: str) -> Path | None:
+    """Local copy of any object in the data bucket (downloaded from R2 when needed)."""
+    local = config.LOCAL_DATA_DIR / key
+    if not local.exists() and config.r2_enabled():
+        local.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            _r2_client().download_file(config.R2_DATA_BUCKET, key, str(local))
+        except Exception:
+            return None
+    return local if local.exists() else None

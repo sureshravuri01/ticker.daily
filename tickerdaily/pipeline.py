@@ -60,6 +60,7 @@ def stub_post(f: dict) -> dict:
         "spotlight_why": "Placeholder text. In a real run, Claude writes this from the day's headlines and filings.",
         "movers_line": "Placeholder text for the movers slide.",
         "next_line": "Placeholder text for what to watch next.",
+        "context_line": "Placeholder context from the archive.",
         "caption": "Placeholder caption.\nNot financial advice.",
         "hashtags": ["stocks", "stockmarket", "investing"],
     }
@@ -84,6 +85,8 @@ def draft(fixture: str | None, use_llm: bool) -> Path:
     )
     if not f["spotlight"] or not f["indexes"]:
         sys.exit("Not enough market data to build a post (market holiday or API problem).")
+    from . import memory
+    f["memory"] = memory.build(f, raw["quotes"], use_api=not fixture)
     public = factsmod.public_view(f)
 
     attempts: list[dict] = []
@@ -126,6 +129,10 @@ def draft(fixture: str | None, use_llm: bool) -> Path:
         "approval": None, "published": None, "metrics": [],
     }
     storage.save_post_record(record, day)
+    try:
+        memory.record_spotlight(day, post_id, f["spotlight"])
+    except Exception as e:
+        print(f"[memory] could not update spotlight index: {e}", flush=True)
     if use_llm and telegram.enabled():
         try:
             mid = telegram.send_draft(record)
@@ -190,7 +197,13 @@ def publish(record: dict) -> None:
     if done:  # a double tap or a re-run must never post twice
         telegram.notify(f"ℹ️ {tag} is already live: {done.get('permalink') or done['media_id']}")
         return
-    if not still_fresh(day):
+    same_day = [k for k in storage.list_keys(f"{PUBLISHED_PREFIX}dt={day}/") if k.endswith(".json")]
+    if same_day:  # one after-the-bell wrap per market day
+        other = storage.get_json(same_day[0]) or {}
+        telegram.notify(f"ℹ️ Not publishing {tag}: today's wrap is already live "
+                        f"({other.get('permalink') or other.get('post_id', 'another draft')}).")
+        return
+    if day != config.market_date().isoformat() or not still_fresh(day):
         telegram.notify(f"⛔ Not publishing {tag}: it uses data from {day}, and stale market numbers "
                         "would mislead followers. Tap Regenerate on a fresh draft instead.")
         return

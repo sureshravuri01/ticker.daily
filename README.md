@@ -29,7 +29,7 @@ SEC EDGAR (8-K filings) ──────────┼─► ingest ─► R2
 |---|---|
 | 1 | Cover: hook, market tone, index changes |
 | 2 | Scoreboard: S&P 500, Nasdaq 100, Dow, Russell, breadth of 50 big names |
-| 3 | Biggest story: the top explained mover, with earnings beat/miss and sources |
+| 3 | Biggest story: the top explained mover, earnings beat/miss, a **Context** line from memory, sources |
 | 4 | Top gainers and decliners |
 | 5 | What to watch: next session's earnings |
 
@@ -77,6 +77,7 @@ posts/dt=YYYY-MM-DD/<post_id>.json   # facts, copy, validator attempts, image UR
 decisions/dt=YYYY-MM-DD/<post_id>-<run>.json   # your approve/reject/regen taps
 published/dt=YYYY-MM-DD/<post_id>.json         # Instagram media id + permalink
 metrics/<post_id>/{1h,24h,7d}.json             # reach, likes, saves, shares…
+state/spotlight_index.json                     # what we covered each day (feeds memory)
 ```
 
 Each raw row keeps the untouched API response (`payload`) so anything can be re-derived later.
@@ -86,6 +87,7 @@ Each raw row keeps the untouched API response (`payload`) so anything can be re-
 - [x] Phase 1: ingest, data lake, facts, writer, validator, carousel renderer
 - [x] Phase 2: Telegram approve/reject/regenerate (Cloudflare Worker in `worker/`)
 - [x] Phase 3: Instagram publishing on Approve, token refresh, insights at 1h/24h/7d
-- [ ] Phase 4: learning loop (engagement-driven scoring, retrieval over past events)
+- [x] Phase 4a: memory (earnings track record, 52-week range, streaks, past-spotlight follow-through)
+- [ ] Phase 4b: learning loop (engagement-driven scoring and hook style)
 
 *Not financial advice. Market data from Finnhub and SEC EDGAR.*

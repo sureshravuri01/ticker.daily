@@ -73,12 +73,17 @@ COMPANY_NAMES = {
 SCHEMA_VERSION = 1
 
 
-def market_date():
-    """Today's date in New York, rolled back to Friday on weekends (runners use UTC)."""
-    from datetime import datetime, timedelta
+def market_date(now=None):
+    """The trading session a post is about: today in New York once the market has opened
+    (9:30 AM ET), otherwise the previous session. Weekends roll back to Friday.
+    Runners use UTC, so a Pacific-evening run must not be labelled with tomorrow's date."""
+    from datetime import datetime, time, timedelta
     from zoneinfo import ZoneInfo
 
-    d = datetime.now(ZoneInfo("America/New_York")).date()
+    ny = (now or datetime.now(ZoneInfo("America/New_York"))).astimezone(ZoneInfo("America/New_York"))
+    d = ny.date()
+    if ny.time() < time(9, 30):
+        d -= timedelta(days=1)
     while d.weekday() >= 5:
         d -= timedelta(days=1)
     return d
