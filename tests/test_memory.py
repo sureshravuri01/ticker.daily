@@ -118,3 +118,10 @@ def test_context_line_renders_only_when_present(local, monkeypatch):
             "movers_line": "m", "next_line": "n", "caption": "c", "hashtags": []}
     assert 'class="ctx"' in render_html(f, dict(base, context_line="Beat 4 quarters running."))
     assert 'class="ctx"' not in render_html(f, dict(base, context_line=""))
+
+
+def test_mislabelled_events_are_ignored(local):
+    _write_day(local, "2026-11-03", {"AMZN": 0.5})  # Tuesday's real close
+    events = [{"date": "2026-11-03", "post_id": "bad", "symbol": "AMZN", "change_pct": "+3.00%", "raw_pct": 3.0}]
+    closes = memory.daily_closes(date(2026, 11, 5))
+    assert memory.past_spotlights("AMZN", date(2026, 11, 5), closes, events) == []

@@ -99,8 +99,13 @@ def past_spotlights(symbol: str, today: date, closes: dict, events: list[dict], 
     """Earlier days we spotlighted this stock, with the next session's move when we have it."""
     by_day = {}
     for e in events:
-        if e["symbol"] == symbol and e["date"] < today.isoformat():
-            by_day[e["date"]] = e  # latest draft of each day wins
+        if e["symbol"] != symbol or e["date"] >= today.isoformat():
+            continue
+        # Cross-check with that day's close: drops entries saved under the wrong date.
+        actual = (closes.get(e["date"]) or {}).get(symbol, {}).get("change_pct")
+        if actual is not None and e.get("raw_pct") is not None and abs(actual - e["raw_pct"]) > 0.05:
+            continue
+        by_day[e["date"]] = e  # latest draft of each day wins
     out = []
     for day in sorted(by_day, reverse=True)[:limit]:
         nxt = next_business_day(date.fromisoformat(day)).isoformat()
