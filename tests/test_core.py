@@ -147,3 +147,12 @@ def test_market_date_follows_the_session():
     assert str(market_date(utc(2026, 11, 3, 14, 31))) == "2026-11-03"   # Tue 9:31 AM ET
     assert str(market_date(utc(2026, 11, 7, 18, 0))) == "2026-11-06"    # Saturday -> Friday
     assert str(market_date(utc(2026, 11, 9, 13, 0))) == "2026-11-06"    # Mon 8 AM ET -> Friday
+
+
+def test_slides_are_instagram_hd(tmp_path):
+    from PIL import Image
+    from tickerdaily.render.render import render_pngs
+    paths = render_pngs(build(), good_post(), tmp_path)
+    img = Image.open(paths[0])
+    assert img.size == (1080, 1350) and img.format == "JPEG" and img.mode == "RGB"
+    assert paths[0].stat().st_size < 8 * 1024 * 1024  # Instagram's image size limit

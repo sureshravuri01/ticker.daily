@@ -39,6 +39,7 @@ def normalise(data: bytes) -> bytes | None:
         return None
     if min(img.size) < 48:
         return None
+    small = max(img.size) < 200  # tiny sources get upscaled smoothly below so they don't look blocky
     img = img.convert("RGBA")
     if img.getchannel("A").getbbox() is None:  # fully transparent
         return None
@@ -48,7 +49,10 @@ def normalise(data: bytes) -> bytes | None:
     alpha_lo, _ = img.getchannel("A").getextrema()
     if hi - lo < 12 and alpha_lo == 255:  # one flat colour: not a real logo
         return None
-    img.thumbnail((256, 256))
+    img.thumbnail((512, 512))  # biggest icon is ~124px, rendered at 2x: keep detail to spare
+    if small:
+        f = 256 / max(img.size)
+        img = img.resize((round(img.width * f), round(img.height * f)), Image.LANCZOS)
     out = io.BytesIO()
     img.save(out, "PNG", optimize=True)
     return out.getvalue()

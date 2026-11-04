@@ -6,6 +6,22 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 TEMPLATE_DIR = Path(__file__).parent
+SCALE = 2                 # render resolution multiplier (supersampling)
+SIZE = (1080, 1350)       # Instagram's maximum for a 4:5 feed post
+
+
+def _save_for_instagram(png: bytes, path: Path) -> None:
+    """Downscale the 2x render to exactly 1080x1350 and save as a high-quality sRGB JPEG
+    (Instagram's publishing API accepts JPEG only). subsampling=0 keeps full colour detail,
+    so thin red and green numbers stay crisp."""
+    import io
+
+    from PIL import Image
+
+    img = Image.open(io.BytesIO(png)).convert("RGB")
+    if img.size != SIZE:
+        img = img.resize(SIZE, Image.LANCZOS)
+    img.save(path, "JPEG", quality=95, subsampling=0, optimize=True)
 
 
 def render_html(facts: dict, post: dict, fmt: str = "wrap", logos: dict | None = None) -> str:
@@ -22,7 +38,8 @@ def render_pngs(facts: dict, post: dict, out_dir: Path, fmt: str = "wrap", logos
     paths = []
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        page = browser.new_page(viewport={"width": 1080, "height": 1350})
+        # Supersample: render at 2x, then downscale. Smoother text, bars and icon curves.
+        page = browser.new_page(viewport={"width": 1080, "height": 1350}, device_scale_factor=SCALE)
         page.set_content(html, wait_until="networkidle")
         page.evaluate("document.fonts.ready")
         # Long copy must never push content into the footer: shrink step by step if needed.
@@ -40,9 +57,8 @@ def render_pngs(facts: dict, post: dict, out_dir: Path, fmt: str = "wrap", logos
         if tightened:
             print(f"[render] tightened layout on slide(s) {sorted(set(tightened))}", flush=True)
         for i, el in enumerate(page.query_selector_all(".slide"), start=1):
-            # Instagram's publishing API accepts JPEG only.
             path = out_dir / f"slide_{i}.jpg"
-            el.screenshot(path=str(path), type="jpeg", quality=92)
+            _save_for_instagram(el.screenshot(type="png"), path)
             paths.append(path)
         browser.close()
     return paths
