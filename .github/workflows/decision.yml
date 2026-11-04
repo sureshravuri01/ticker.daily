@@ -1,4 +1,6 @@
 name: Handle approval decision
+# The run title "<action> <post id>" lets the Morning Brief's veto check see a tap instantly.
+run-name: ${{ inputs.action }} ${{ inputs.post_id }}
 
 # Started by the Cloudflare Worker when you tap a button in Telegram.
 on:

@@ -33,11 +33,17 @@ SEC EDGAR (8-K filings) ──────────┼─► ingest ─► R2
 | 4 | Top gainers and decliners |
 | 5 | What to watch: next session's earnings |
 
-## Schedules (GitHub Actions)
+## Daily lineup (weekdays, Pacific time)
 
-- **Hourly snapshot** (`snapshot.yml`): weekdays during market hours, stores everything.
-- **Daily draft** (`daily-post.yml`): weekdays 2:12 PM PST. Builds the carousel and attaches the
-  slides to the workflow run. Run it any time from **Actions → Daily after-the-bell draft → Run workflow**.
+| Time | Post | Workflow | Approval |
+|---|---|---|---|
+| ~7:00 AM | ☀️ **Morning Brief**: the open, earnings reactions, early movers, today's calendar | `morning-brief.yml` | **Auto-posts** after a 10-minute veto window (tap ⛔ to stop it) |
+| ~11:00 AM | 🔎 **Deep Dive**: one company in depth (earnings first, else the biggest news-driven move) | `deep-dive.yml` | Tap ✅ |
+| ~2:15 PM | 🔔 **After the Bell**: the daily wrap | `daily-post.yml` | Tap ✅ |
+
+Plus `snapshot.yml` (hourly market snapshots) and `instagram-upkeep.yml` (metrics, token).
+Each format posts at most once per market day, never with stale data, and never on a closed market.
+Turn Morning Brief auto-posting off with the repo variable `MORNING_AUTOPUBLISH=false`.
 
 ## Approvals (Telegram)
 

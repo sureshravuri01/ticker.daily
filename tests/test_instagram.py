@@ -82,7 +82,7 @@ def _record(day):
 
 
 def test_publish_once_only(ig, monkeypatch):
-    monkeypatch.setattr(pipeline, "still_fresh", lambda d, now=None: True)
+    monkeypatch.setattr(pipeline, "still_fresh", lambda d, now=None, **kw: True)
     monkeypatch.setattr(config, "market_date", lambda now=None: __import__("datetime").date(2026, 11, 2))
     rec = _record("2026-11-02")
     pipeline.publish(rec)
@@ -106,7 +106,7 @@ def test_freshness_window():
 
 
 def test_insights_checkpoints_and_metric_fallback(ig, monkeypatch):
-    monkeypatch.setattr(pipeline, "still_fresh", lambda d, now=None: True)
+    monkeypatch.setattr(pipeline, "still_fresh", lambda d, now=None, **kw: True)
     monkeypatch.setattr(config, "market_date", lambda now=None: __import__("datetime").date(2026, 11, 2))
     pipeline.publish(_record("2026-11-02"))
     t0 = datetime.fromisoformat(storage.get_json("published/dt=2026-11-02/2026-11-02-wrap-000001.json")["published_at"])
@@ -134,7 +134,7 @@ def test_system_user_token_uses_facebook_host(ig, monkeypatch):
 
 
 def test_one_wrap_per_market_day(ig, monkeypatch):
-    monkeypatch.setattr(pipeline, "still_fresh", lambda d, now=None: True)
+    monkeypatch.setattr(pipeline, "still_fresh", lambda d, now=None, **kw: True)
     monkeypatch.setattr(config, "market_date", lambda now=None: __import__("datetime").date(2026, 11, 2))
     pipeline.publish(_record("2026-11-02"))
     first = len(ig.calls)
@@ -144,7 +144,7 @@ def test_one_wrap_per_market_day(ig, monkeypatch):
 
 
 def test_mislabelled_draft_blocked(ig, monkeypatch):
-    monkeypatch.setattr(pipeline, "still_fresh", lambda d, now=None: True)
+    monkeypatch.setattr(pipeline, "still_fresh", lambda d, now=None, **kw: True)
     monkeypatch.setattr(config, "market_date", lambda now=None: __import__("datetime").date(2026, 11, 2))
     pipeline.publish(_record("2026-11-03"))  # labelled tomorrow, built from today's data
     assert ig.calls == []

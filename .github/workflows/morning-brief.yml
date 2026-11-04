@@ -1,0 +1,67 @@
+name: Morning Brief (auto-posts after a veto window)
+
+# ~6:45 AM PT the draft is built from live opening data and sent to Telegram with a
+# "Don't post" button. If nobody taps it within MORNING_VETO_MINUTES, it publishes (~7:00 AM PT).
+# Turn auto-posting off with the repo variable MORNING_AUTOPUBLISH=false (it then asks for approval).
+on:
+  schedule:
+    - cron: "25 14 * * 1-5"   # 6:25 AM PST; waits for the 9:45 AM ET mark before drafting
+  workflow_dispatch: {}
+
+concurrency: morning-brief
+
+permissions:
+  contents: read
+  actions: read   # lets the veto check see your Telegram taps instantly
+
+jobs:
+  morning:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_PUBLIC_URL: ${{ vars.R2_PUBLIC_URL }}
+      SEC_USER_AGENT: ${{ vars.SEC_USER_AGENT }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+      IG_USER_ID: ${{ vars.IG_USER_ID }}
+      MORNING_AUTOPUBLISH: ${{ vars.MORNING_AUTOPUBLISH }}
+      MORNING_VETO_MINUTES: ${{ vars.MORNING_VETO_MINUTES }}
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq fonts-inter
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+      - name: Wait for the market to open
+        run: python -m tickerdaily wait-open --minutes-after 15
+      - name: Build the Morning Brief
+        id: draft
+        run: python -m tickerdaily draft --format morning
+      - name: Veto window, then publish
+        if: steps.draft.outputs.auto == 'true'
+        run: python -m tickerdaily autopublish --post-id "${{ steps.draft.outputs.post_id }}"
+      - name: Keep the slides as a downloadable artifact
+        if: steps.draft.outputs.post_id != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: morning-${{ github.run_id }}
+          path: out/
+          retention-days: 30
+      - name: Tell me if it broke
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            --data-urlencode text="⚠️ Morning Brief failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" > /dev/null

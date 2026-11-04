@@ -70,7 +70,7 @@ def recently_featured(days: int = 3) -> set[str]:
     for p in root.glob("dt=*/*.json"):
         if p.parent.name[3:] >= cutoff:
             try:
-                s = json.loads(p.read_text()).get("facts", {}).get("spotlight", {}).get("symbol")
+                s = ((json.loads(p.read_text()).get("facts") or {}).get("spotlight") or {}).get("symbol")
                 if s:
                     seen.add(s)
             except (ValueError, OSError):

@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+{% include "_style.css.j2" %}
+</style>
+</head>
+<body>
+{% set has_rx = f.earnings_reactions|length > 0 %}
+{% set n = 4 if has_rx else 3 %}
+{% macro top(i) %}<div class="top"><span class="brand">TICKER<b>.</b>DAILY</span><span>{{ f.date_label }} · {{ i }}/{{ n }}</span></div>{% endmacro %}
+{% macro foot() %}<div class="foot"><span>@ticker.daily</span><span>Data: Finnhub · Not financial advice</span></div>{% endmacro %}
+{% macro mover(m, color) %}<div class="mv"><div class="s">{{ m.symbol }}{% if m.name != m.symbol %}<small>{{ m.name }}</small>{% endif %}</div>
+  <div class="track"><div class="fill" style="width:{{ (8 + 92 * (m._raw_pct|abs) / maxabs)|round(1) }}%;background:var(--{{ color }})"></div></div>
+  <div class="pct {{ color }}">{{ m.change_pct }}</div></div>{% endmacro %}
+
+<!-- 1 COVER -->
+<section class="slide">
+  {{ top(1) }}
+  <div class="kicker">Morning brief</div>
+  <div class="tone"><i style="background: var(--{{ 'up' if f.market_tone == 'up' else 'down' if f.market_tone == 'down' else 'bell' }})"></i>
+    {{ {'up': 'Opening higher', 'down': 'Opening lower', 'mixed': 'Mixed open'}[f.market_tone] }}</div>
+  <h1>{{ p.hook }}</h1>
+  <p class="lede" style="margin-top:36px">{{ p.cover_sub }}</p>
+  <div class="spacer"></div>
+  <div class="sub">In early trading</div>
+  <div class="strip">
+    {% for i in f.indexes %}<div class="chip"><div class="n">{{ i.name }}</div><div class="v {{ 'up' if i.up else 'down' }}">{{ i.change_pct }}</div></div>{% endfor %}
+  </div>
+  <div class="swipe">Swipe for what's moving →</div>
+</section>
+
+{% set i = namespace(n=2) %}
+{% if has_rx %}
+<!-- 2 EARNINGS REACTIONS -->
+<section class="slide">
+  {{ top(i.n) }}{% set i.n = i.n + 1 %}
+  <div class="kicker">Earnings reactions</div>
+  <h2>Who reported, and how it's trading</h2>
+  {% for r in f.earnings_reactions %}
+  <div class="rx">
+    <div class="hd"><div class="s">{{ r.symbol }}{% if r.name != r.symbol %}<small>{{ r.name }}</small>{% endif %}</div>
+      <div class="pct {{ 'up' if r.up else 'down' }}">{{ r.change_pct }}</div></div>
+    <div class="ln">
+      {% if r.earnings.eps_actual %}<span>EPS {{ r.earnings.eps_actual }} vs {{ r.earnings.eps_estimate }}</span><span class="badge {{ r.earnings.eps_result }}">{{ r.earnings.eps_result }}</span>{% endif %}
+      {% if r.earnings.revenue_actual %}<span>· Rev {{ r.earnings.revenue_actual }} vs {{ r.earnings.revenue_estimate }}</span><span class="badge {{ r.earnings.revenue_result }}">{{ r.earnings.revenue_result }}</span>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  {% if p.earnings_line %}<p class="lede" style="margin-top:14px;font-size:34px">{{ p.earnings_line }}</p>{% endif %}
+  <div class="spacer"></div>
+  {{ foot() }}
+</section>
+{% endif %}
+
+<!-- EARLY MOVERS -->
+{% set maxabs = ((f.early_gainers + f.early_losers) | map(attribute='_raw_pct') | map('abs') | max) if (f.early_gainers + f.early_losers) else 1 %}
+<section class="slide">
+  {{ top(i.n) }}{% set i.n = i.n + 1 %}
+  <div class="kicker">Early movers</div>
+  <h2>What's moving at the open</h2>
+  <p class="lede" style="font-size:34px;margin-bottom:34px">{{ p.open_line }}</p>
+  {% if f.early_gainers %}<div class="grp up">Rising</div>{% endif %}
+  {% for m in f.early_gainers %}{{ mover(m, 'up') }}{% endfor %}
+  {% if f.early_losers %}<div class="grp down" style="margin-top:22px">Falling</div>{% endif %}
+  {% for m in f.early_losers %}{{ mover(m, 'down') }}{% endfor %}
+  <p class="lede" style="margin-top:20px;font-size:32px">{{ p.movers_line }}</p>
+  <div class="spacer"></div>
+  {{ foot() }}
+</section>
+
+<!-- TODAY -->
+<section class="slide">
+  {{ top(i.n) }}
+  <div class="kicker">Today</div>
+  <h2>On the calendar</h2>
+  {% for e in f.reporting_today %}
+  <div class="ev"><div class="s">{{ e.symbol }} {% if e.name != e.symbol %}<span style="font-size:28px;color:var(--muted);font-weight:500">{{ e.name }}</span>{% endif %}</div>
+    <div class="w">Reports {{ e.when }}</div>
+    <div class="e">{% if e.eps_estimate %}EPS est. {{ e.eps_estimate }}{% endif %}{% if e.revenue_estimate %} · Revenue est. {{ e.revenue_estimate }}{% endif %}</div></div>
+  {% else %}
+  <p class="empty">No major earnings scheduled for the rest of today.</p>
+  {% endfor %}
+  <p class="lede" style="margin-top:22px;font-size:34px">{{ p.watch_line }}</p>
+  <div class="spacer"></div>
+  <p class="cta" style="margin-bottom:36px">The full wrap lands <b>after the bell</b>.</p>
+  {{ foot() }}
+</section>
+</body>
+</html>

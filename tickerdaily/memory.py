@@ -138,7 +138,8 @@ def range_position(price: float, rng: dict) -> dict | None:
     hi, lo = rng.get("52WeekHigh"), rng.get("52WeekLow")
     if not hi or not lo or not price:
         return None
-    out = {"label": "52-week range", "week52_high": fmt_price(hi), "week52_low": fmt_price(lo)}
+    out = {"label": "52-week range", "week52_high": fmt_price(hi), "week52_low": fmt_price(lo),
+           "_pos": max(0.0, min(1.0, (price - lo) / (hi - lo))) if hi > lo else 1.0}
     if price >= hi:
         out["status"] = "at or above its 52-week high"
     else:

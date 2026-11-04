@@ -1,8 +1,3 @@
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<style>
   :root {
     --ink: #0A0E13; --panel: #121821; --line: #1F2833;
     --text: #F1F3F5; --muted: #8A96A3;
@@ -97,110 +92,39 @@
   .empty { font-size: 36px; color: var(--muted); }
   .cta { font-size: 44px; font-weight: 800; letter-spacing: -.02em; }
   .cta b { color: var(--bell); }
-</style>
-</head>
-<body>
-{% set n = 5 %}
-{% macro top(i) %}<div class="top"><span class="brand">TICKER<b>.</b>DAILY</span><span>{{ f.date_label }} · {{ i }}/{{ n }}</span></div>{% endmacro %}
-{% macro foot() %}<div class="foot"><span>@ticker.daily</span><span>Data: Finnhub, SEC EDGAR · Not financial advice</span></div>{% endmacro %}
 
-<!-- 1 COVER -->
-<section class="slide">
-  {{ top(1) }}
-  <div class="kicker">After the bell</div>
-  <div class="tone"><i style="background: var(--{{ 'up' if f.market_tone == 'up' else 'down' if f.market_tone == 'down' else 'bell' }})"></i>
-    Market {{ {'up': 'higher', 'down': 'lower', 'mixed': 'mixed'}[f.market_tone] }}</div>
-  <h1>{{ p.hook }}</h1>
-  <p class="lede" style="margin-top:36px">{{ p.cover_sub }}</p>
-  <div class="spacer"></div>
-  <div class="strip">
-    {% for i in f.indexes %}<div class="chip"><div class="n">{{ i.name }}</div><div class="v {{ 'up' if i.up else 'down' }}">{{ i.change_pct }}</div></div>{% endfor %}
-  </div>
-  <div class="swipe">Swipe for the why →</div>
-</section>
-
-<!-- 2 MARKET WRAP -->
-<section class="slide">
-  {{ top(2) }}
-  <div class="kicker">The scoreboard</div>
-  <h2>How the market closed</h2>
-  <div class="idx">
-    {% for i in f.indexes %}
-    <div class="card"><div class="n">{{ i.name }} <span style="opacity:.6">({{ i.symbol }})</span></div>
-      <div class="p">{{ i.price }}</div><div class="c {{ 'up' if i.up else 'down' }}">{{ i.change_pct }}</div></div>
-    {% endfor %}
-  </div>
-  {% set b = f.breadth %}
-  <div class="breadth">
-    <div class="lab"><span class="up">{{ b.up }} up</span><span style="color:var(--muted)">of {{ b.total }} big names we track</span><span class="down">{{ b.down }} down</span></div>
-    <div class="bar"><div style="width:{{ (100 * b.up / (b.total or 1))|round(1) }}%;background:var(--up)"></div><div class="spacer"></div><div style="width:{{ (100 * b.down / (b.total or 1))|round(1) }}%;background:var(--down)"></div></div>
-  </div>
-  <p class="lede">{{ p.wrap_line }}</p>
-  <div class="spacer"></div>
-  {{ foot() }}
-</section>
-
-<!-- 3 SPOTLIGHT -->
-{% set s = f.spotlight %}
-<section class="slide">
-  {{ top(3) }}
-  <div class="kicker">Biggest story</div>
-  <div class="tick"><span class="s">{{ s.symbol }}</span>{% if s.name != s.symbol %}<span class="co">{{ s.name }}</span>{% endif %}</div>
-  <div class="big {{ 'up' if s.up else 'down' }}">{{ s.change_pct }}</div>
-  <div class="meta">Closed at {{ s.price }}{% if s.day_range %} · Day range {{ s.day_range }}{% endif %}</div>
-  <div class="why"><h3>{{ p.spotlight_title }}</h3><p>{{ p.spotlight_why }}</p></div>
-  {% if p.get('context_line') %}<div class="ctx"><span>CONTEXT</span>{{ p.context_line }}</div>{% endif %}
-  {% if s.earnings and s.earnings.eps_actual %}
-  <div class="earn">
-    <div>EPS vs est.<b>{{ s.earnings.eps_actual }} <span style="color:var(--muted);font-weight:500">/ {{ s.earnings.eps_estimate }}</span></b></div>
-    {% if s.earnings.revenue_actual %}<div>Revenue vs est.<b>{{ s.earnings.revenue_actual }} <span style="color:var(--muted);font-weight:500">/ {{ s.earnings.revenue_estimate }}</span></b></div>{% endif %}
-  </div>
-  {% endif %}
-  {% set srcs = (s.headlines | map(attribute='source') | unique | list) + (['SEC ' ~ s.filings[0].form] if s.filings else []) %}
-  {% if srcs %}<div class="src">Sources: {{ srcs[:4] | join(', ') }}</div>{% endif %}
-  <div class="spacer"></div>
-  {{ foot() }}
-</section>
-
-<!-- 4 MOVERS -->
-{% set maxabs = ((f.gainers + f.losers) | map(attribute='_raw_pct') | map('abs') | max) if (f.gainers + f.losers) else 1 %}
-<section class="slide">
-  {{ top(4) }}
-  <div class="kicker">Movers</div>
-  <h2>Winners and losers</h2>
-  {% if f.gainers %}<div class="grp up">Top gainers</div>{% endif %}
-  {% for m in f.gainers %}
-  <div class="mv"><div class="s">{{ m.symbol }}{% if m.name != m.symbol %}<small>{{ m.name }}</small>{% endif %}</div>
-    <div class="track"><div class="fill" style="width:{{ (8 + 92 * (m._raw_pct|abs) / maxabs)|round(1) }}%;background:var(--up)"></div></div>
-    <div class="pct up">{{ m.change_pct }}</div></div>
-  {% endfor %}
-  {% if f.losers %}<div class="grp down" style="margin-top:28px">Top decliners</div>{% endif %}
-  {% for m in f.losers %}
-  <div class="mv"><div class="s">{{ m.symbol }}{% if m.name != m.symbol %}<small>{{ m.name }}</small>{% endif %}</div>
-    <div class="track"><div class="fill" style="width:{{ (8 + 92 * (m._raw_pct|abs) / maxabs)|round(1) }}%;background:var(--down)"></div></div>
-    <div class="pct down">{{ m.change_pct }}</div></div>
-  {% endfor %}
-  <p class="lede" style="margin-top:26px;font-size:34px">{{ p.movers_line }}</p>
-  <div class="spacer"></div>
-  {{ foot() }}
-</section>
-
-<!-- 5 WHAT'S NEXT -->
-<section class="slide">
-  {{ top(5) }}
-  <div class="kicker">On deck</div>
-  <h2>What to watch next</h2>
-  {% for e in f.next_up %}
-  <div class="ev"><div class="s">{{ e.symbol }} {% if e.name != e.symbol %}<span style="font-size:28px;color:var(--muted);font-weight:500">{{ e.name }}</span>{% endif %}</div>
-    <div class="w">{{ e.when }}</div>
-    <div class="e">{% if e.eps_estimate %}EPS est. {{ e.eps_estimate }}{% endif %}{% if e.revenue_estimate %} · Revenue est. {{ e.revenue_estimate }}{% endif %}</div></div>
-  {% else %}
-  <p class="empty">No major earnings on the calendar for the next session.</p>
-  {% endfor %}
-  <p class="lede" style="margin-top:22px;font-size:34px">{{ p.next_line }}</p>
-  <div class="spacer"></div>
-  <p class="cta" style="margin-bottom:36px">Follow <b>@ticker.daily</b> for the why behind every move.</p>
-  {{ foot() }}
-</section>
-</body>
-</html>
+  /* ---- morning + deep dive ---- */
+  .rx { background: var(--panel); border: 2px solid var(--line); border-radius: 26px; padding: 30px 32px; margin-bottom: 20px; }
+  .rx .hd { display: flex; justify-content: space-between; align-items: baseline; }
+  .rx .s { font-size: 48px; font-weight: 800; letter-spacing: -.02em; }
+  .rx .s small { font-size: 26px; font-weight: 500; color: var(--muted); margin-left: 14px; letter-spacing: 0; }
+  .rx .pct { font-size: 52px; font-weight: 800; letter-spacing: -.02em; }
+  .rx .ln { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 16px; font-size: 26px; color: var(--muted); }
+  .badge { font-size: 22px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 5px 12px; border-radius: 8px; }
+  .badge.beat { color: var(--up); background: rgba(43,214,123,.12); }
+  .badge.missed { color: var(--down); background: rgba(255,92,92,.12); }
+  .badge.matched { color: var(--bell); background: rgba(245,184,65,.12); }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 40px; }
+  .stat { background: var(--panel); border: 2px solid var(--line); border-radius: 26px; padding: 32px; }
+  .stat .n { font-size: 26px; color: var(--muted); }
+  .stat .v { font-size: 56px; font-weight: 800; letter-spacing: -.025em; margin-top: 10px; }
+  .stat .v small { font-size: 30px; color: var(--muted); font-weight: 500; }
+  .stat .r { margin-top: 14px; }
+  .pts { counter-reset: pt; }
+  .pt { display: flex; gap: 26px; align-items: flex-start; margin-bottom: 34px; font-size: 36px; line-height: 1.38; color: #D3DAE0; }
+  .pt::before { counter-increment: pt; content: counter(pt); flex: none; width: 64px; height: 64px; border-radius: 18px;
+                background: var(--panel); border: 2px solid var(--line); color: var(--bell); font-weight: 800; font-size: 32px;
+                display: flex; align-items: center; justify-content: center; margin-top: -4px; }
+  .qs { display: flex; gap: 14px; margin-bottom: 40px; }
+  .q { flex: 1; background: var(--panel); border: 2px solid var(--line); border-radius: 20px; padding: 22px 18px; text-align: center; }
+  .q .n { font-size: 22px; color: var(--muted); margin-bottom: 12px; }
+  .rng { margin-bottom: 44px; }
+  .rng .lab { display: flex; justify-content: space-between; font-size: 26px; color: var(--muted); margin-bottom: 16px; }
+  .rng .rail { position: relative; height: 18px; border-radius: 9px; background: linear-gradient(90deg, rgba(255,92,92,.45), rgba(245,184,65,.45), rgba(43,214,123,.45)); }
+  .rng .dot { position: absolute; top: 50%; width: 40px; height: 40px; border-radius: 50%; background: var(--text);
+              border: 6px solid var(--ink); transform: translate(-50%, -50%); }
+  .rng .now { font-size: 30px; margin-top: 22px; color: #D3DAE0; }
+  .sub { font-size: 26px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 6px 0 18px; }
+  .slide.tight .pt { font-size: 32px; margin-bottom: 26px; }
+  .slide.tight .rx { padding: 24px 28px; margin-bottom: 14px; }
+  .slide.tight h2 { font-size: 56px; margin-bottom: 30px; }

@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+{% include "_style.css.j2" %}
+</style>
+</head>
+<body>
+{% set s = f.spotlight %}
+{% set m = f.get('memory') or {} %}
+{% set track = m.get('earnings_track_record') %}
+{% set rng = m.get('price_range') %}
+{% set has_ctx = track or rng or p.context_line %}
+{% set n = 5 if has_ctx else 4 %}
+{% macro top(i) %}<div class="top"><span class="brand">TICKER<b>.</b>DAILY</span><span>{{ f.date_label }} · {{ i }}/{{ n }}</span></div>{% endmacro %}
+{% macro foot() %}<div class="foot"><span>@ticker.daily</span><span>Data: Finnhub, SEC EDGAR · Not financial advice</span></div>{% endmacro %}
+
+<!-- 1 COVER -->
+<section class="slide">
+  {{ top(1) }}
+  <div class="kicker">Deep dive{% if s.kind == 'earnings' %} · Earnings{% endif %}</div>
+  <div class="tick" style="margin-top:20px"><span class="s">{{ s.symbol }}</span>{% if s.name != s.symbol %}<span class="co">{{ s.name }}</span>{% endif %}</div>
+  <div class="big {{ 'up' if s.up else 'down' }}">{{ s.change_pct }} <span style="font-size:34px;color:var(--muted);font-weight:500;letter-spacing:0">today</span></div>
+  <div class="spacer"></div>
+  <h1 style="font-size:84px">{{ p.hook }}</h1>
+  <p class="lede" style="margin-top:30px">{{ p.cover_sub }}</p>
+  <div class="swipe" style="margin-top:56px">Swipe for the full story →</div>
+</section>
+
+<!-- 2 NUMBERS -->
+<section class="slide">
+  {{ top(2) }}
+  <div class="kicker">The numbers</div>
+  <h2>{% if s.earnings and s.earnings.eps_actual %}{{ s.earnings.quarter or 'Latest quarter' }} results{% else %}Where it stands{% endif %}</h2>
+  <div class="stats">
+    {% if s.earnings and s.earnings.eps_actual %}
+    <div class="stat"><div class="n">EPS vs estimate</div><div class="v">{{ s.earnings.eps_actual }} <small>/ {{ s.earnings.eps_estimate }}</small></div>
+      <div class="r"><span class="badge {{ s.earnings.eps_result }}">{{ s.earnings.eps_result }}</span></div></div>
+    {% if s.earnings.revenue_actual %}
+    <div class="stat"><div class="n">Revenue vs estimate</div><div class="v">{{ s.earnings.revenue_actual }} <small>/ {{ s.earnings.revenue_estimate }}</small></div>
+      <div class="r"><span class="badge {{ s.earnings.revenue_result }}">{{ s.earnings.revenue_result }}</span></div></div>
+    {% endif %}
+    {% endif %}
+    <div class="stat"><div class="n">Price now</div><div class="v">{{ s.price }}</div>
+      <div class="r {{ 'up' if s.up else 'down' }}" style="font-size:30px;font-weight:700">{{ s.change }} ({{ s.change_pct }})</div></div>
+    {% if s.day_range %}<div class="stat"><div class="n">Today's range</div><div class="v" style="font-size:40px;margin-top:18px">{{ s.day_range }}</div>
+      {% if s.prev_close %}<div class="r" style="font-size:26px;color:var(--muted)">Prev. close {{ s.prev_close }}</div>{% endif %}</div>{% endif %}
+  </div>
+  <p class="lede" style="font-size:34px">{{ p.numbers_line }}</p>
+  <div class="spacer"></div>
+  {{ foot() }}
+</section>
+
+<!-- 3 WHAT HAPPENED -->
+<section class="slide">
+  {{ top(3) }}
+  <div class="kicker">What happened</div>
+  <h2>Why {{ s.symbol }} is moving</h2>
+  <div class="pts">{% for t in p.why_points %}<div class="pt"><div>{{ t }}</div></div>{% endfor %}</div>
+  {% set srcs = (s.headlines | map(attribute='source') | unique | list) + (['SEC ' ~ s.filings[0].form] if s.filings else []) %}
+  {% if srcs %}<div class="src">Sources: {{ srcs[:4] | join(', ') }}</div>{% endif %}
+  <div class="spacer"></div>
+  {{ foot() }}
+</section>
+
+{% if has_ctx %}
+<!-- 4 CONTEXT -->
+<section class="slide">
+  {{ top(4) }}
+  <div class="kicker">Context</div>
+  <h2>The bigger picture</h2>
+  {% if track %}
+  <div class="sub">Earnings vs estimates, last {{ track.quarters_checked }} quarters</div>
+  <div class="qs">{% for q in track.last_quarters|reverse %}
+    <div class="q"><div class="n">{{ q.quarter }}</div><span class="badge {{ q.result }}">{{ q.result }}</span></div>{% endfor %}</div>
+  {% endif %}
+  {% if rng %}
+  <div class="sub">52-week range</div>
+  <div class="rng">
+    <div class="lab"><span>{{ rng.week52_low }}</span><span>{{ rng.week52_high }}</span></div>
+    <div class="rail"><div class="dot" style="left:{{ ((rng._pos or 0) * 100)|round(1) }}%"></div></div>
+    {% if rng.from_52w_high %}<div class="now">{{ rng.from_52w_high }} from the 52-week high</div>{% else %}<div class="now">At a 52-week high</div>{% endif %}
+  </div>
+  {% endif %}
+  {% if p.context_line %}<p class="lede" style="font-size:34px">{{ p.context_line }}</p>{% endif %}
+  <div class="spacer"></div>
+  {{ foot() }}
+</section>
+{% endif %}
+
+<!-- LAST: BOTTOM LINE -->
+<section class="slide">
+  {{ top(n) }}
+  <div class="kicker">Bottom line</div>
+  <h2>What to watch</h2>
+  <p class="lede">{{ p.watch_line }}</p>
+  <div class="spacer"></div>
+  <p class="cta" style="margin-bottom:36px">Follow <b>@ticker.daily</b> for the why behind every move.</p>
+  {{ foot() }}
+</section>
+</body>
+</html>

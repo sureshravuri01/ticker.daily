@@ -36,6 +36,10 @@ R2_PUBLIC_URL = _env("R2_PUBLIC_URL", "").rstrip("/")  # https://pub-xxxx.r2.dev
 IG_ACCESS_TOKEN = _env("IG_ACCESS_TOKEN")
 IG_USER_ID = _env("IG_USER_ID")
 
+# Morning Brief posts itself after a veto window unless this repo variable is "false".
+MORNING_AUTOPUBLISH = _env("MORNING_AUTOPUBLISH", "true").lower() not in ("false", "0", "off", "no")
+MORNING_VETO_MINUTES = int(_env("MORNING_VETO_MINUTES", "10") or 10)
+
 TELEGRAM_BOT_TOKEN = _env("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = _env("TELEGRAM_CHAT_ID")
 
