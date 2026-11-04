@@ -7,6 +7,7 @@
 </style>
 </head>
 <body>
+{% from "_logo.html.j2" import logo with context %}
 {% set s = f.spotlight %}
 {% set m = f.get('memory') or {} %}
 {% set track = m.get('earnings_track_record') %}
@@ -20,7 +21,7 @@
 <section class="slide">
   {{ top(1) }}
   <div class="kicker">Deep dive{% if s.kind == 'earnings' %} · Earnings{% endif %}</div>
-  <div class="tick" style="margin-top:20px"><span class="s">{{ s.symbol }}</span>{% if s.name != s.symbol %}<span class="co">{{ s.name }}</span>{% endif %}</div>
+  <div class="tick" style="margin-top:20px">{{ logo(s.symbol, 124) }}<span class="s">{{ s.symbol }}</span>{% if s.name != s.symbol %}<span class="co">{{ s.name }}</span>{% endif %}</div>
   <div class="big {{ 'up' if s.up else 'down' }}">{{ s.change_pct }} <span style="font-size:34px;color:var(--muted);font-weight:500;letter-spacing:0">today</span></div>
   <div class="spacer"></div>
   <h1 style="font-size:84px">{{ p.hook }}</h1>
@@ -56,7 +57,7 @@
 <section class="slide">
   {{ top(3) }}
   <div class="kicker">What happened</div>
-  <h2>Why {{ s.symbol }} is moving</h2>
+  <div class="who" style="margin-bottom:40px">{{ logo(s.symbol, 76) }}<h2 style="margin:0">Why {{ s.symbol }} is moving</h2></div>
   <div class="pts">{% for t in p.why_points %}<div class="pt"><div>{{ t }}</div></div>{% endfor %}</div>
   {% set srcs = (s.headlines | map(attribute='source') | unique | list) + (['SEC ' ~ s.filings[0].form] if s.filings else []) %}
   {% if srcs %}<div class="src">Sources: {{ srcs[:4] | join(', ') }}</div>{% endif %}

@@ -45,6 +45,10 @@ Plus `snapshot.yml` (hourly market snapshots) and `instagram-upkeep.yml` (metric
 Each format posts at most once per market day, never with stale data, and never on a closed market.
 Turn Morning Brief auto-posting off with the repo variable `MORNING_AUTOPUBLISH=false`.
 
+**Company logos** appear next to tickers, for identification only (from Finnhub company profiles,
+cached in R2 under `logos/`). Missing or broken logos fall back to a monogram tile. After design
+changes, run **Actions → Preview slide designs** to get sample slides in Telegram.
+
 ## Approvals (Telegram)
 
 Each draft is sent to Telegram with **Approve / Reject / Regenerate** buttons. Taps go to a

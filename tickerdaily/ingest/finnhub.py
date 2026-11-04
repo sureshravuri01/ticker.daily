@@ -113,3 +113,8 @@ def price_range(symbol: str) -> dict:
     """52-week high/low from Finnhub's basic financials."""
     m = (_get("/stock/metric", symbol=symbol, metric="all") or {}).get("metric") or {}
     return {k: m.get(k) for k in ("52WeekHigh", "52WeekLow", "52WeekHighDate", "52WeekLowDate")}
+
+
+def company_profile(symbol: str) -> dict:
+    """Name, industry, logo URL and more (free tier)."""
+    return _get("/stock/profile2", symbol=symbol) or {}

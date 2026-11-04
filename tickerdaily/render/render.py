@@ -8,16 +8,16 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 TEMPLATE_DIR = Path(__file__).parent
 
 
-def render_html(facts: dict, post: dict, fmt: str = "wrap") -> str:
+def render_html(facts: dict, post: dict, fmt: str = "wrap", logos: dict | None = None) -> str:
     env = Environment(loader=FileSystemLoader(TEMPLATE_DIR), autoescape=True, undefined=StrictUndefined)
-    return env.get_template(f"{fmt}.html.j2").render(f=facts, p=post)
+    return env.get_template(f"{fmt}.html.j2").render(f=facts, p=post, logos=logos or {})
 
 
-def render_pngs(facts: dict, post: dict, out_dir: Path, fmt: str = "wrap") -> list[Path]:
+def render_pngs(facts: dict, post: dict, out_dir: Path, fmt: str = "wrap", logos: dict | None = None) -> list[Path]:
     from playwright.sync_api import sync_playwright
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    html = render_html(facts, post, fmt)
+    html = render_html(facts, post, fmt, logos)
     (out_dir / "carousel.html").write_text(html)
     paths = []
     with sync_playwright() as p:

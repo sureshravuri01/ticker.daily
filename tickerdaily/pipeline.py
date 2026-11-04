@@ -155,7 +155,13 @@ def draft(fixture: str | None, use_llm: bool, fmt: str = "wrap") -> dict | None:
 
     post_id = f"{day}-{fmt}-{rid[-7:-1]}"
     out_dir = config.OUTPUT_DIR / day / post_id
-    pngs = render_pngs(f, post, out_dir, fmt)
+    from . import logos as logomod
+    try:
+        logos = logomod.for_facts(f, allow_fetch=not fixture)
+    except Exception as e:  # logos are decoration: never block a post
+        print(f"[logos] unavailable: {e}", flush=True)
+        logos = {}
+    pngs = render_pngs(f, post, out_dir, fmt, logos)
     image_urls = [storage.upload(p, f"posts/{day}/{post_id}/{p.name}", config.R2_MEDIA_BUCKET) for p in pngs]
 
     full_caption = post["caption"] + "\n\n" + " ".join("#" + h for h in post.get("hashtags", []))
@@ -375,6 +381,33 @@ def collect_insights(now: datetime | None = None) -> int:
     return n
 
 
+def preview(fixture: str = "tests/fixtures/sample_day.json") -> None:
+    """Renders all three formats from SAMPLE data with real logos and sends them to Telegram.
+    Writes nothing to the dataset (no post records, no memory), only cached logos."""
+    from . import formats, logos as logomod
+    from .render.render import render_pngs
+
+    raw = json.loads(Path(fixture).read_text())
+    today, now = date.fromisoformat(raw["date"]), datetime.fromisoformat(raw["now"])
+    rid = storage.run_id()
+    for fmt in ("morning", "dive", "wrap"):
+        f = _build_facts(fmt, raw, today, now) if fmt != "dive" else formats.build_dive(
+            quotes=raw["quotes"], company_news=raw["company_news"], market_news=raw["market_news"],
+            filings=raw["filings"], earnings=raw["earnings"], today=today, now=now, avoid=set())
+        f["memory"] = {}
+        lg = logomod.for_facts(f, allow_fetch=True)
+        print(f"[preview] {fmt}: logos for {sorted(lg)}; monograms for "
+              f"{sorted(set(logomod.symbols_in(f)) - set(lg))}", flush=True)
+        out = config.OUTPUT_DIR / "preview" / fmt
+        pngs = render_pngs(f, stub_post(factsmod.public_view(f), fmt), out, fmt, lg)
+        urls = [storage.upload(p, f"previews/{rid}/{fmt}/{p.name}", config.R2_MEDIA_BUCKET) for p in pngs]
+        if telegram.enabled() and all(u.startswith("https://") for u in urls):
+            media = [{"type": "photo", "media": u} for u in urls]
+            media[0]["caption"] = (f"👀 PREVIEW · {FORMATS[fmt]} with company logos\n"
+                                   "Sample data (invented prices, placeholder text). Not for posting.")
+            telegram._call("sendMediaGroup", chat_id=config.TELEGRAM_CHAT_ID, media=media)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="tickerdaily")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -395,11 +428,14 @@ def main(argv=None):
     sub.add_parser("refresh-token")
     sub.add_parser("insights")
     sub.add_parser("ig-check")
+    sub.add_parser("preview")
     a = ap.parse_args(argv)
     if a.cmd == "refresh-token":
         from . import instagram
         info = instagram.refresh_token()
         print(f"[token] refreshed, expires {info['expires_at']}", flush=True)
+    elif a.cmd == "preview":
+        preview()
     elif a.cmd == "ig-check":
         from . import instagram
         me = instagram.whoami()
