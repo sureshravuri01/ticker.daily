@@ -1,10 +1,8 @@
-{# Company logo tile; a monogram when we have no usable logo. Identification only. #}
+{# Company logo as an app-style icon; a monogram icon when we have no usable logo. Identification only. #}
 {% macro logo(sym, size=56) -%}
-{%- set src = logos.get(sym) -%}
-{%- set r = (size * 0.24)|round|int -%}
-{%- if src -%}
-<span class="lg" style="width:{{ size }}px;height:{{ size }}px;border-radius:{{ r }}px"><img src="{{ src }}" alt=""></span>
-{%- else -%}
-<span class="lg mono" style="width:{{ size }}px;height:{{ size }}px;border-radius:{{ r }}px;font-size:{{ (size * (0.3 if sym|length > 3 else 0.36))|round|int }}px">{{ sym[:4] }}</span>
-{%- endif -%}
+{%- set l = logos.get(sym) -%}
+<span class="lgs"><span class="lgw"><span class="lg{% if not l %} mono{% endif %}" style="width:{{ size }}px;height:{{ size }}px;
+{%- if l %}background:{{ l.bg }}{% else %}font-size:{{ (size * (0.3 if sym|length > 3 else 0.36))|round|int }}px{% endif %}">
+{%- if l %}<img src="{{ l.src }}" alt="" style="width:{{ l.scale }}%;height:{{ l.scale }}%">{% else %}{{ sym[:4] }}{% endif -%}
+</span></span></span>
 {%- endmacro %}

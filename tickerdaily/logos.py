@@ -54,6 +54,29 @@ def normalise(data: bytes) -> bytes | None:
     return out.getvalue()
 
 
+def icon_style(png: bytes) -> dict:
+    """App-icon look: if the logo has its own solid background, the whole icon takes that colour and
+    the logo fills it; transparent logos sit centred on white."""
+    from PIL import Image
+
+    img = Image.open(io.BytesIO(png)).convert("RGBA")
+    w, h = img.size
+    px = img.load()
+    edge = [px[x, y] for x in range(w) for y in (0, 1, h - 2, h - 1)] + \
+           [px[x, y] for y in range(h) for x in (0, 1, w - 2, w - 1)]
+    opaque = [p for p in edge if p[3] > 230]
+    if len(opaque) > 0.9 * len(edge):
+        rgb = [sorted(p[i] for p in opaque)[len(opaque) // 2] for i in range(3)]
+        spread = max(max(p[i] for p in opaque) - min(p[i] for p in opaque) for i in range(3))
+        if spread < 40:  # one solid background colour around the mark
+            return {"bg": "#%02X%02X%02X" % tuple(rgb), "scale": 100 if w == h else 88}
+    return {"bg": "#FFFFFF", "scale": 70}
+
+
+def _uri(png: bytes) -> dict:
+    return {"src": "data:image/png;base64," + base64.b64encode(png).decode(), **icon_style(png)}
+
+
 def _download(sym: str) -> tuple[bytes | None, str]:
     from .ingest import finnhub
 
@@ -67,13 +90,13 @@ def _download(sym: str) -> tuple[bytes | None, str]:
     return (png, "ok") if png else (None, "image unusable")
 
 
-def get(sym: str, allow_fetch: bool = True) -> str | None:
-    """Logo as a data URI, or None (the template then draws a monogram)."""
+def get(sym: str, allow_fetch: bool = True) -> dict | None:
+    """{"src": data URI, "bg": icon colour, "scale": %} or None (the template then draws a monogram)."""
     meta = storage.get_json(_meta_key(sym))
     if meta and meta.get("status") == "ok":
         path = storage.fetch(_png_key(sym))
         if path:
-            return "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode()
+            return _uri(path.read_bytes())
     elif meta:
         wait = RETRY_AFTER if meta.get("detail") in ("no logo in company profile", "image unusable") else RETRY_AFTER_ERROR
         if datetime.now(timezone.utc) - datetime.fromisoformat(meta["checked_at"]) < wait:
@@ -92,7 +115,7 @@ def get(sym: str, allow_fetch: bool = True) -> str | None:
     storage.put_json(_meta_key(sym), {"symbol": sym, "status": "ok" if png else "missing",
                                       "detail": status, "checked_at": datetime.now(timezone.utc).isoformat()})
     print(f"[logos] {sym}: {status}", flush=True)
-    return ("data:image/png;base64," + base64.b64encode(png).decode()) if png else None
+    return _uri(png) if png else None
 
 
 def symbols_in(facts: dict) -> list[str]:
@@ -114,7 +137,7 @@ def symbols_in(facts: dict) -> list[str]:
     return seen
 
 
-def for_facts(facts: dict, allow_fetch: bool = True) -> dict[str, str]:
+def for_facts(facts: dict, allow_fetch: bool = True) -> dict[str, dict]:
     out, fetched = {}, 0
     for sym in symbols_in(facts):
         cached_only = not allow_fetch or fetched >= MAX_FETCH_PER_RUN

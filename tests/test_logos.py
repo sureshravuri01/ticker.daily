@@ -46,7 +46,7 @@ def store(monkeypatch, tmp_path):
 
 
 def test_cache_hits_and_cached_misses(store):
-    assert logos.get("AMZN").startswith("data:image/png;base64,")
+    assert logos.get("AMZN")["src"].startswith("data:image/png;base64,")
     assert logos.get("AMZN")                     # second time from cache
     assert logos.get("XYZ") is None
     assert logos.get("XYZ") is None              # miss is cached: not re-requested
@@ -66,8 +66,8 @@ def test_template_logo_or_monogram():
                            today=date(2026, 10, 30), now=datetime.fromisoformat(FIX["now"]), avoid=set())
     f["memory"] = {}
     post = pipeline.stub_post(factsmod.public_view(f), "dive")
-    with_logo = render_html(f, post, "dive", {"AMZN": "data:image/png;base64,AAAA"})
-    assert 'src="data:image/png;base64,AAAA"' in with_logo
+    with_logo = render_html(f, post, "dive", {"AMZN": {"src": "data:image/png;base64,AAAA", "bg": "#123456", "scale": 100}})
+    assert 'src="data:image/png;base64,AAAA"' in with_logo and "background:#123456" in with_logo
     assert 'class="lg mono"' in render_html(f, post, "dive", {})
 
 
@@ -79,3 +79,12 @@ def test_errors_retry_sooner_than_true_misses(store, monkeypatch):
     logos.storage.put_json("logos/XYZ.json", {"symbol": "XYZ", "status": "missing", "detail": "no logo in company profile",
                                               "checked_at": (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()})
     assert logos.get("XYZ") is None and store == ["AMZN"]
+
+
+def test_icon_style_fills_solid_backgrounds():
+    def logo(bg):
+        im = Image.new("RGBA", (200, 200), bg)
+        ImageDraw.Draw(im).ellipse((50, 50, 150, 150), fill=(255, 255, 255, 255))
+        b = io.BytesIO(); im.save(b, "PNG"); return b.getvalue()
+    assert logos.icon_style(logo((20, 90, 200, 255))) == {"bg": "#145AC8", "scale": 100}   # solid blue: fill icon
+    assert logos.icon_style(logo((0, 0, 0, 0)))["bg"] == "#FFFFFF"                            # transparent: on white
