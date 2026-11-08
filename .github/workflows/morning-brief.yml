@@ -1,8 +1,8 @@
 name: Morning Brief (auto-posts after a veto window)
 
 # ~6:45 AM PT the draft is built from live opening data and sent to Telegram with a
-# "Don't post" button. If nobody taps it within MORNING_VETO_MINUTES, it publishes (~7:00 AM PT).
-# Turn auto-posting off with the repo variable MORNING_AUTOPUBLISH=false (it then asks for approval).
+# "Post now" / "Don't post" buttons. If nobody taps within VETO_MINUTES (default 5), it publishes.
+# Choose which formats auto-post with the repo variable AUTOPUBLISH (e.g. "morning,dive" or "none").
 on:
   schedule:
     - cron: "25 14 * * 1-5"   # 6:25 AM PST; waits for the 9:45 AM ET mark before drafting
@@ -30,7 +30,9 @@ jobs:
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
       IG_USER_ID: ${{ vars.IG_USER_ID }}
+      AUTOPUBLISH: ${{ vars.AUTOPUBLISH }}
       MORNING_AUTOPUBLISH: ${{ vars.MORNING_AUTOPUBLISH }}
+      VETO_MINUTES: ${{ vars.VETO_MINUTES }}
       MORNING_VETO_MINUTES: ${{ vars.MORNING_VETO_MINUTES }}
       GITHUB_TOKEN: ${{ github.token }}
     steps:

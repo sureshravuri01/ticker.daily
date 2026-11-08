@@ -164,7 +164,8 @@ def test_telegram_texts():
            "facts": formats.build_morning(**ARGS), "caption_full": "c", "post": {}}
     t = telegram.review_text(rec, auto=True, veto_minutes=10)
     assert "Morning Brief posts automatically in 10 min" in t and "Spotlight" not in t
-    assert telegram.veto_button(rec["post_id"])["inline_keyboard"][0][0]["callback_data"].startswith("reject|")
+    row = telegram.veto_button(rec["post_id"])["inline_keyboard"][0]
+    assert [b["callback_data"].split("|")[0] for b in row] == ["approve", "reject"]
 
 
 def test_wrap_survives_morning_records(tmp_path, monkeypatch):
@@ -179,3 +180,45 @@ def test_intraday_formats_need_an_open_market():
     assert formats.in_session(date(2026, 11, 2), t(2, 14, 50))       # Mon 9:50 AM ET
     assert not formats.in_session(date(2026, 11, 2), t(3, 4, 0))     # Mon 11 PM ET: closing data
     assert not formats.in_session(date(2026, 11, 2), t(2, 21, 30))   # after the close
+
+
+def test_publish_lock_blocks_a_second_publisher(ig):
+    """Auto-publish and a 'Post now' tap racing each other must not both post."""
+    storage.put_json("locks/2026-11-02-dive.json", {"post_id": "2026-11-02-dive-000001",
+                                                     "at": datetime.now(timezone.utc).isoformat()})
+    pipeline.publish(_rec("dive", 2))
+    assert _publishes(ig) == 0
+
+
+def test_failed_publish_releases_lock(ig, monkeypatch):
+    real = instagram.publish_carousel
+
+    def boom(*a, **k):
+        raise instagram.InstagramError("API access blocked")
+    monkeypatch.setattr(instagram, "publish_carousel", boom)
+    with pytest.raises(instagram.InstagramError):
+        pipeline.publish(_rec("wrap"))
+    assert storage.get_json("locks/2026-11-02-wrap.json")["failed"] is True
+    monkeypatch.setattr(instagram, "publish_carousel", real)
+    pipeline.publish(_rec("wrap"))  # retry after re-authenticating: not blocked by the lock
+    assert _publishes(ig) == 1
+
+
+def test_autopublish_formats_from_config(monkeypatch):
+    import importlib
+    monkeypatch.setenv("AUTOPUBLISH", "morning, dive")
+    monkeypatch.delenv("MORNING_AUTOPUBLISH", raising=False)
+    monkeypatch.setenv("VETO_MINUTES", "5")
+    c = importlib.reload(config)
+    try:
+        assert c.AUTOPUBLISH == {"morning", "dive"} and c.VETO_MINUTES == 5
+        monkeypatch.setenv("AUTOPUBLISH", "none")
+        assert importlib.reload(config).AUTOPUBLISH == set()
+        monkeypatch.delenv("AUTOPUBLISH")
+        monkeypatch.setenv("MORNING_AUTOPUBLISH", "false")
+        assert importlib.reload(config).AUTOPUBLISH == {"dive", "wrap"}
+    finally:
+        monkeypatch.delenv("AUTOPUBLISH", raising=False)
+        monkeypatch.delenv("MORNING_AUTOPUBLISH", raising=False)
+        monkeypatch.delenv("VETO_MINUTES", raising=False)
+        importlib.reload(config)

@@ -166,7 +166,7 @@ def draft(fixture: str | None, use_llm: bool, fmt: str = "wrap") -> dict | None:
 
     full_caption = post["caption"] + "\n\n" + " ".join("#" + h for h in post.get("hashtags", []))
     (out_dir / "caption.txt").write_text(full_caption)
-    auto = fmt == "morning" and config.MORNING_AUTOPUBLISH and bool(f.get("_live"))
+    auto = fmt in config.AUTOPUBLISH and bool(f.get("_live"))
     record = {
         "post_id": post_id, "created_at": datetime.now(timezone.utc).isoformat(), "run_id": rid,
         "status": "draft", "format": fmt, "model": config.MODEL if use_llm else "stub",
@@ -183,7 +183,7 @@ def draft(fixture: str | None, use_llm: bool, fmt: str = "wrap") -> dict | None:
             print(f"[memory] could not update spotlight index: {e}", flush=True)
     if use_llm and telegram.enabled():
         try:
-            mid = telegram.send_draft(record, auto=auto, veto_minutes=config.MORNING_VETO_MINUTES)
+            mid = telegram.send_draft(record, auto=auto, veto_minutes=config.VETO_MINUTES)
             print(f"[draft] sent to Telegram ({'auto-publish with veto' if auto else 'for approval'}, message {mid})", flush=True)
         except Exception as e:  # the draft is saved either way
             print(f"[draft] Telegram send failed: {e}", flush=True)
@@ -221,7 +221,9 @@ def decide(post_id: str, action: str, source: str) -> None:
             telegram.notify(f"❌ Rejected <code>{html.escape(post_id)}</code>. It won't be posted; logged so we can learn from it.")
     else:
         telegram.notify("🔄 Regenerating with fresh data. New draft in about 3 minutes.")
-        draft(None, use_llm=True, fmt=fmt_of(post_id))
+        new = draft(None, use_llm=True, fmt=fmt_of(post_id))
+        if new and new.get("auto_publish"):  # the fresh draft gets its own veto window
+            autopublish(new["post_id"], config.VETO_MINUTES * 60)
 
 
 PUBLISHED_PREFIX = "published/"
@@ -275,10 +277,17 @@ def publish(record: dict) -> None:
         telegram.notify(f"⛔ Not publishing {tag}: it uses data from {day}, and stale market numbers "
                         "would mislead followers. Tap Regenerate on a fresh draft instead.")
         return
+    lock_key = f"locks/{day}-{fmt}.json"
+    lock = storage.get_json(lock_key)
+    if lock and datetime.now(timezone.utc) - datetime.fromisoformat(lock["at"]) < timedelta(minutes=15):
+        print(f"[publish] {lock['post_id']} is already being published; skipping", flush=True)
+        return
+    storage.put_json(lock_key, {"post_id": post_id, "at": datetime.now(timezone.utc).isoformat()})
     telegram.notify(f"⏳ Publishing {tag} to Instagram…")
     try:
         result = instagram.publish_carousel(record["images"], record["caption_full"])
     except Exception as e:
+        storage.put_json(lock_key, {"post_id": post_id, "at": "2000-01-01T00:00:00+00:00", "failed": True})
         telegram.notify(f"⚠️ Publishing {tag} failed: {html.escape(str(e))[:500]}")
         raise
     storage.put_json(key, {
@@ -319,7 +328,7 @@ def decisions_for(post_id: str) -> set[str]:
 
 
 def autopublish(post_id: str, wait_seconds: int) -> None:
-    """Veto window: wait, then publish unless the owner tapped Don't post."""
+    """Veto window: wait, then publish unless the owner tapped Don't post (or already tapped Post now)."""
     import time
 
     record = storage.load_post_record(post_id)
@@ -418,7 +427,7 @@ def main(argv=None):
     d.add_argument("--format", default="wrap", choices=list(FORMATS))
     ap_ = sub.add_parser("autopublish")
     ap_.add_argument("--post-id", required=True)
-    ap_.add_argument("--wait", type=int, default=None, help="seconds; default MORNING_VETO_MINUTES")
+    ap_.add_argument("--wait", type=int, default=None, help="seconds; default VETO_MINUTES")
     w = sub.add_parser("wait-open")
     w.add_argument("--minutes-after", type=int, default=15)
     c = sub.add_parser("decide")
@@ -447,7 +456,7 @@ def main(argv=None):
     elif a.cmd == "ingest":
         ingest(config.market_date().isoformat(), storage.run_id())
     elif a.cmd == "autopublish":
-        autopublish(a.post_id, a.wait if a.wait is not None else config.MORNING_VETO_MINUTES * 60)
+        autopublish(a.post_id, a.wait if a.wait is not None else config.VETO_MINUTES * 60)
     elif a.cmd == "wait-open":
         wait_for_open(a.minutes_after)
     elif a.cmd == "decide":

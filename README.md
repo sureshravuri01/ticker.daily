@@ -37,13 +37,16 @@ SEC EDGAR (8-K filings) ──────────┼─► ingest ─► R2
 
 | Time | Post | Workflow | Approval |
 |---|---|---|---|
-| ~7:00 AM | ☀️ **Morning Brief**: the open, earnings reactions, early movers, today's calendar | `morning-brief.yml` | **Auto-posts** after a 10-minute veto window (tap ⛔ to stop it) |
-| ~11:00 AM | 🔎 **Deep Dive**: one company in depth (earnings first, else the biggest news-driven move) | `deep-dive.yml` | Tap ✅ |
-| ~2:15 PM | 🔔 **After the Bell**: the daily wrap | `daily-post.yml` | Tap ✅ |
+| ~7:00 AM | ☀️ **Morning Brief**: the open, earnings reactions, early movers, today's calendar | `morning-brief.yml` | Auto |
+| ~11:00 AM | 🔎 **Deep Dive**: one company in depth (earnings first, else the biggest news-driven move) | `deep-dive.yml` | Auto |
+| ~2:15 PM | 🔔 **After the Bell**: the daily wrap | `daily-post.yml` | Auto |
+
+**Auto** = the draft arrives in Telegram with ✅ Post now / ⛔ Don't post and publishes itself after a
+5-minute veto window if you don't tap. Repo variables: `AUTOPUBLISH` (which formats, e.g.
+`morning,dive`, or `none` to require a tap for everything) and `VETO_MINUTES` (default 5).
 
 Plus `snapshot.yml` (hourly market snapshots) and `instagram-upkeep.yml` (metrics, token).
 Each format posts at most once per market day, never with stale data, and never on a closed market.
-Turn Morning Brief auto-posting off with the repo variable `MORNING_AUTOPUBLISH=false`.
 
 **Company logos** appear next to tickers, for identification only (from Finnhub company profiles,
 cached in R2 under `logos/`). Missing or broken logos fall back to a monogram tile. After design

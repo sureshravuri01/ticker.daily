@@ -8,10 +8,14 @@ on:
 
 concurrency: deep-dive
 
+permissions:
+  contents: read
+  actions: read   # lets the veto check see your Telegram taps instantly
+
 jobs:
   draft:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
@@ -22,6 +26,12 @@ jobs:
       SEC_USER_AGENT: ${{ vars.SEC_USER_AGENT }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+      IG_USER_ID: ${{ vars.IG_USER_ID }}
+      AUTOPUBLISH: ${{ vars.AUTOPUBLISH }}
+      MORNING_AUTOPUBLISH: ${{ vars.MORNING_AUTOPUBLISH }}
+      VETO_MINUTES: ${{ vars.VETO_MINUTES }}
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -36,8 +46,13 @@ jobs:
       - name: Tests
         run: python -m pytest -q
       - name: Build today's draft
+        id: draft
         run: python -m tickerdaily draft --format dive
+      - name: Veto window, then publish
+        if: steps.draft.outputs.auto == 'true'
+        run: python -m tickerdaily autopublish --post-id "${{ steps.draft.outputs.post_id }}"
       - name: Keep the slides as a downloadable artifact
+        if: always() && steps.draft.outputs.post_id != ''
         uses: actions/upload-artifact@v4
         with:
           name: dive-${{ github.run_id }}

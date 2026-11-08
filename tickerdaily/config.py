@@ -36,9 +36,12 @@ R2_PUBLIC_URL = _env("R2_PUBLIC_URL", "").rstrip("/")  # https://pub-xxxx.r2.dev
 IG_ACCESS_TOKEN = _env("IG_ACCESS_TOKEN")
 IG_USER_ID = _env("IG_USER_ID")
 
-# Morning Brief posts itself after a veto window unless this repo variable is "false".
-MORNING_AUTOPUBLISH = _env("MORNING_AUTOPUBLISH", "true").lower() not in ("false", "0", "off", "no")
-MORNING_VETO_MINUTES = int(_env("MORNING_VETO_MINUTES", "10") or 10)
+# Drafts publish themselves after a veto window unless you tap Don't post.
+# AUTOPUBLISH lists the formats that do this (repo variable, e.g. "morning,dive" or "none").
+AUTOPUBLISH = {x.strip() for x in _env("AUTOPUBLISH", "morning,dive,wrap").lower().split(",")} - {"", "none"}
+if _env("MORNING_AUTOPUBLISH").lower() in ("false", "0", "off", "no"):  # older switch, still honoured
+    AUTOPUBLISH.discard("morning")
+VETO_MINUTES = int(_env("VETO_MINUTES") or _env("MORNING_VETO_MINUTES") or 5)
 
 TELEGRAM_BOT_TOKEN = _env("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = _env("TELEGRAM_CHAT_ID")

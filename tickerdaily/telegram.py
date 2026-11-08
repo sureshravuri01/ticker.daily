@@ -35,7 +35,10 @@ def notify(text: str) -> None:
 
 
 def veto_button(post_id: str) -> dict:
-    return {"inline_keyboard": [[{"text": "⛔ Don't post", "callback_data": f"reject|{post_id}"}]]}
+    return {"inline_keyboard": [[
+        {"text": "✅ Post now", "callback_data": f"approve|{post_id}"},
+        {"text": "⛔ Don't post", "callback_data": f"reject|{post_id}"},
+    ]]}
 
 
 def buttons(post_id: str) -> dict:
