@@ -19,11 +19,18 @@ ITEM_LABELS = {
 }
 
 
-def _get(url: str):
-    r = requests.get(url, headers={"User-Agent": config.SEC_USER_AGENT}, timeout=20)
-    time.sleep(0.15)  # SEC fair-access limit is 10 requests/second
-    r.raise_for_status()
-    return r.json()
+def _get(url: str, tries: int = 3):
+    for attempt in range(tries):
+        try:
+            r = requests.get(url, headers={"User-Agent": config.SEC_USER_AGENT}, timeout=20)
+            time.sleep(0.15)  # SEC fair-access limit is 10 requests/second
+            if r.status_code < 500 or attempt == tries - 1:
+                r.raise_for_status()
+                return r.json()
+        except (requests.ConnectionError, requests.Timeout):
+            if attempt == tries - 1:
+                raise
+        time.sleep(3 * (attempt + 1))
 
 
 def cik_map(symbols: list[str]) -> dict[str, int]:

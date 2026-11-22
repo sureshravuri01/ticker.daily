@@ -40,9 +40,9 @@ jobs:
           cache: pip
       - name: Install
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq fonts-inter
-          pip install -r requirements.txt
-          python -m playwright install --with-deps chromium
+          for i in 1 2 3; do sudo apt-get update -qq && sudo apt-get install -y -qq fonts-inter && break; echo "apt failed, retrying"; sleep 20; done
+          pip install -r requirements.txt || { sleep 20; pip install -r requirements.txt; }
+          python -m playwright install --with-deps chromium || { sleep 20; python -m playwright install --with-deps chromium; }
       - name: Tests
         run: python -m pytest -q
       - name: Build today's draft

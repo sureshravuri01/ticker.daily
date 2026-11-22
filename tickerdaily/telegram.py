@@ -6,6 +6,7 @@ which checks they came from TELEGRAM_CHAT_ID and starts the decision workflow.
 from __future__ import annotations
 
 import html
+import time
 
 import requests
 
@@ -29,9 +30,17 @@ def _call(method: str, **payload) -> dict:
 
 
 def notify(text: str) -> None:
-    if enabled():
-        _call("sendMessage", chat_id=config.TELEGRAM_CHAT_ID, text=text[:TEXT_LIMIT],
-              parse_mode="HTML", disable_web_page_preview=True)
+    """Best effort: a notification problem must never stop a post."""
+    if not enabled():
+        return
+    for attempt in range(2):
+        try:
+            _call("sendMessage", chat_id=config.TELEGRAM_CHAT_ID, text=text[:TEXT_LIMIT],
+                  parse_mode="HTML", disable_web_page_preview=True)
+            return
+        except Exception as e:
+            print(f"[telegram] notify failed (attempt {attempt + 1}): {e}", flush=True)
+            time.sleep(5)
 
 
 def veto_button(post_id: str) -> dict:

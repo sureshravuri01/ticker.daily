@@ -94,12 +94,60 @@ def publish_carousel(image_urls: list[str], caption: str, delay: float = 10) -> 
     carousel = _req("POST", f"/{uid}/media", tok, media_type="CAROUSEL",
                     children=",".join(children), caption=caption)["id"]
     _wait_ready(carousel, tok, delay=delay)
-    media_id = _req("POST", f"/{uid}/media_publish", tok, creation_id=carousel)["id"]
+    media_id, recovered = _publish_verified(carousel, caption, tok, delay)
     try:
         permalink = _req("GET", f"/{media_id}", tok, fields="permalink").get("permalink")
     except InstagramError:
         permalink = None
-    return {"media_id": media_id, "permalink": permalink, "children": children, "container": carousel}
+    return {"media_id": media_id, "permalink": permalink, "children": children, "container": carousel,
+            "recovered": recovered}
+
+
+RATE_LIMIT_CODES = {4, 17, 32, 613, 80002}
+
+
+def _caption_key(caption: str) -> str:
+    return (caption or "").split("\n")[0].strip()[:80]
+
+
+def find_live(caption: str, tok: str | None = None, limit: int = 10) -> dict | None:
+    """The live post whose caption starts like this one, if any (newest first)."""
+    key = _caption_key(caption)
+    for m in _req("GET", f"/{config.IG_USER_ID}/media", tok, fields="id,caption,timestamp,permalink",
+                  limit=limit).get("data", []):
+        if key and _caption_key(m.get("caption", "")) == key:
+            return m
+    return None
+
+
+def _publish_verified(container: str, caption: str, tok: str, delay: float) -> tuple[str, bool]:
+    """media_publish, but never trust an error blindly: Meta sometimes answers 'request limit
+    reached' even though the post went live. After any error, look for the live post first;
+    retry only when it is certainly not live (so a retry can never double-post)."""
+    waits = [delay * 2, delay * 6, delay * 18]  # 20s, 60s, 180s in production
+    for attempt in range(len(waits) + 1):
+        try:
+            return _req("POST", f"/{config.IG_USER_ID}/media_publish", tok, creation_id=container)["id"], False
+        except InstagramError as e:
+            print(f"[ig] media_publish error (attempt {attempt + 1}): {e}", flush=True)
+            last = e
+        for check in range(3):  # give Instagram a moment, then look for the post
+            time.sleep(delay * (check + 1))
+            try:
+                status = _req("GET", f"/{container}", tok, fields="status_code").get("status_code")
+                live = find_live(caption, tok)
+            except InstagramError:
+                continue
+            if live:
+                print(f"[ig] post is live despite the error: {live['id']}", flush=True)
+                return live["id"], True
+            if status == "PUBLISHED":  # published, but not listed yet: keep looking
+                continue
+            break
+        if getattr(last, "code", None) not in RATE_LIMIT_CODES or attempt == len(waits):
+            raise last
+        time.sleep(waits[attempt])
+    raise last
 
 
 def refresh_token() -> dict:

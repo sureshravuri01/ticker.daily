@@ -156,3 +156,25 @@ def test_slides_are_instagram_hd(tmp_path):
     img = Image.open(paths[0])
     assert img.size == (1080, 1350) and img.format == "JPEG" and img.mode == "RGB"
     assert paths[0].stat().st_size < 8 * 1024 * 1024  # Instagram's image size limit
+
+
+def test_finnhub_retries_network_blips(monkeypatch):
+    import requests
+    from tickerdaily.ingest import finnhub
+    calls = []
+
+    class R:
+        status_code = 200
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return {"c": 1}
+
+    def flaky(*a, **k):
+        calls.append(1)
+        if len(calls) == 1:
+            raise requests.ConnectionError("Connection reset by peer")
+        return R()
+    monkeypatch.setattr(finnhub.requests, "get", flaky)
+    monkeypatch.setattr(finnhub.time, "sleep", lambda s: None)
+    assert finnhub._get("/quote", symbol="AAPL") == {"c": 1} and len(calls) == 2

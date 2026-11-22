@@ -23,7 +23,15 @@ def _get(path: str, **params):
         if wait > 0:
             time.sleep(wait)
         _last_call = time.monotonic()
-        r = requests.get(f"{BASE}{path}", params=params, timeout=20)
+        try:
+            r = requests.get(f"{BASE}{path}", params=params, timeout=20)
+        except (requests.ConnectionError, requests.Timeout) as e:  # network blip: back off and retry
+            print(f"[finnhub] {path}: {type(e).__name__}, retrying", flush=True)
+            time.sleep(5 * (attempt + 1))
+            continue
+        if r.status_code >= 500:
+            time.sleep(5 * (attempt + 1))
+            continue
         if r.status_code == 429:
             time.sleep(10 * (attempt + 1))
             continue

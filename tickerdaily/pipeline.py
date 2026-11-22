@@ -293,6 +293,7 @@ def publish(record: dict) -> None:
     storage.put_json(key, {
         "post_id": post_id, "media_id": result["media_id"], "permalink": result["permalink"],
         "published_at": datetime.now(timezone.utc).isoformat(), "market_date": day,
+        "recovered": result.get("recovered", False),
         "spotlight": (record["facts"].get("spotlight") or {}).get("symbol"),
         "market_tone": record["facts"].get("market_tone"), "format": fmt,
         "hook": record.get("post", {}).get("hook"),
@@ -361,6 +362,49 @@ def wait_for_open(minutes_after: int = 15, max_wait_minutes: int = 60) -> None:
         time.sleep(wait)
 
 
+def reconcile(limit: int = 50) -> int:
+    """Self-healing: record live Instagram posts that our records missed (e.g. Meta returned an
+    error although the post went live), by matching captions to our drafts. Returns posts fixed."""
+    from . import instagram
+
+    known = set()
+    for key in storage.list_keys(PUBLISHED_PREFIX):
+        rec = storage.get_json(key) or {}
+        if rec.get("media_id"):
+            known.add(rec["media_id"])
+    fixed = 0
+    for m in instagram.recent_media(limit):
+        if m["id"] in known:
+            continue
+        day = m["timestamp"][:10]
+        candidates = []
+        for d in {day, (date.fromisoformat(day) - timedelta(days=1)).isoformat()}:  # UTC vs NY date
+            for key in storage.list_keys(f"posts/dt={d}/"):
+                if key.endswith(".json") and "-rejected" not in key:
+                    candidates.append(key)
+        match = None
+        for key in candidates:
+            rec = storage.get_json(key) or {}
+            if rec.get("caption_full") and instagram._caption_key(rec["caption_full"]) == instagram._caption_key(m.get("caption", "")):
+                match = rec
+                break
+        if not match:
+            print(f"[reconcile] live post {m['id']} ({m['timestamp'][:16]}) has no matching draft", flush=True)
+            continue
+        pid, mday = match["post_id"], match["facts"]["date"]
+        storage.put_json(f"{PUBLISHED_PREFIX}dt={mday}/{pid}.json", {
+            "post_id": pid, "media_id": m["id"], "permalink": m.get("permalink"),
+            "published_at": datetime.fromisoformat(m["timestamp"].replace("+0000", "+00:00")).isoformat(),
+            "market_date": mday, "recovered": True, "format": fmt_of(pid),
+            "spotlight": (match["facts"].get("spotlight") or {}).get("symbol"),
+            "market_tone": match["facts"].get("market_tone"), "hook": (match.get("post") or {}).get("hook"),
+        })
+        known.add(m["id"])
+        fixed += 1
+        print(f"[reconcile] recorded {pid} -> {m.get('permalink')}", flush=True)
+    return fixed
+
+
 def collect_insights(now: datetime | None = None) -> int:
     """Snapshots each published post's metrics at 1h, 24h and 7d. These feed the learning loop."""
     from . import instagram
@@ -374,7 +418,7 @@ def collect_insights(now: datetime | None = None) -> int:
         age = now - datetime.fromisoformat(pub["published_at"])
         have = {k.rsplit("/", 1)[-1].removesuffix(".json") for k in storage.list_keys(f"metrics/{pub['post_id']}/")}
         for name, delta in CHECKPOINTS.items():
-            if name in have or age < delta or age > delta + timedelta(days=3):
+            if name in have or age < delta:
                 continue
             try:
                 m = instagram.insights(pub["media_id"])
@@ -384,6 +428,8 @@ def collect_insights(now: datetime | None = None) -> int:
             storage.put_json(f"metrics/{pub['post_id']}/{name}.json", {
                 "post_id": pub["post_id"], "media_id": pub["media_id"], "checkpoint": name,
                 "collected_at": now.isoformat(), "age_hours": round(age.total_seconds() / 3600, 2), "metrics": m,
+                # A missed checkpoint is still collected, flagged late: age_hours is the true age.
+                "late": age > delta * 1.5 + timedelta(hours=2),
             })
             print(f"[insights] {pub['post_id']} {name}: {m}", flush=True)
             n += 1
@@ -463,6 +509,10 @@ def main(argv=None):
         telegram.notify(f"🔗 Instagram connected as <b>@{html.escape(me.get('username') or '?')}</b>. "
                         "Approve is now live: tapping it publishes the carousel.")
     elif a.cmd == "insights":
+        try:
+            print(f"[reconcile] fixed {reconcile()} record(s)", flush=True)
+        except Exception as e:  # reconciling is a repair job: never block metrics
+            print(f"[reconcile] skipped: {e}", flush=True)
         print(f"[insights] collected {collect_insights()} snapshot(s)", flush=True)
     elif a.cmd == "ingest":
         ingest(config.market_date().isoformat(), storage.run_id())
