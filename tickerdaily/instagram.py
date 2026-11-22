@@ -40,15 +40,27 @@ def expires(tok: str) -> bool:
     return not tok.startswith("EAA")  # system-user tokens are set to never expire
 
 
+LAST_USAGE: dict = {}   # Meta's rate-limit usage headers from the latest call
+CALLS = 0
+
+
 def _req(method: str, path: str, tok: str | None = None, **params) -> dict:
+    global CALLS
     tok = tok or token()
     params["access_token"] = tok
     r = requests.request(method, f"{host(tok)}{path}", params=params if method == "GET" else None,
                          data=params if method != "GET" else None, timeout=60)
+    CALLS += 1
+    for h in ("x-app-usage", "x-business-use-case-usage", "x-ad-account-usage"):
+        if h in r.headers:
+            LAST_USAGE[h] = r.headers[h]
     data = r.json() if r.content else {}
     if r.status_code >= 400 or "error" in data:
         err = data.get("error", {})
-        raise InstagramError(f"{method} {path}: {err.get('message', r.text[:200])} (code {err.get('code')})")
+        e = InstagramError(f"{method} {path}: {err.get('message', r.text[:200])} (code {err.get('code')})")
+        e.code = err.get("code")
+        print(f"[ig] error on {method} {path}: code {err.get('code')}, usage {LAST_USAGE}", flush=True)
+        raise e
     return data
 
 
@@ -104,6 +116,12 @@ def refresh_token() -> dict:
     }
     storage.put_json(TOKEN_STATE_KEY, state)
     return {k: v for k, v in state.items() if k != "access_token"}
+
+
+def recent_media(limit: int = 40) -> list[dict]:
+    """What is actually live on the account, newest first."""
+    return _req("GET", f"/{config.IG_USER_ID}/media", fields="id,caption,timestamp,permalink,media_type",
+                limit=limit).get("data", [])
 
 
 def whoami() -> dict:

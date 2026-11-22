@@ -438,11 +438,22 @@ def main(argv=None):
     sub.add_parser("insights")
     sub.add_parser("ig-check")
     sub.add_parser("preview")
+    sub.add_parser("ig-audit")
     a = ap.parse_args(argv)
     if a.cmd == "refresh-token":
         from . import instagram
         info = instagram.refresh_token()
         print(f"[token] refreshed, expires {info['expires_at']}", flush=True)
+    elif a.cmd == "ig-audit":
+        from . import instagram
+        media = instagram.recent_media()
+        print(f"[audit] {len(media)} recent posts on Instagram (usage: {instagram.LAST_USAGE})", flush=True)
+        for m in reversed(media):
+            first = (m.get("caption") or "").split("\n")[0][:70]
+            print(f"[audit] IG  {m['timestamp'][:16]}  {m['id']}  {first}", flush=True)
+        for key in sorted(storage.list_keys(PUBLISHED_PREFIX)):
+            rec = storage.get_json(key) or {}
+            print(f"[audit] REC {rec.get('published_at', '')[:16]}  {rec.get('media_id')}  {rec.get('post_id')}", flush=True)
     elif a.cmd == "preview":
         preview()
     elif a.cmd == "ig-check":
